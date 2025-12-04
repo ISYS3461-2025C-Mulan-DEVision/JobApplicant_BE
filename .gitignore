@@ -1,0 +1,45 @@
+# Ignore Maven build output
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Ignore IDE files
+.idea/
+*.iml
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+*.log
+logs/
+
+# ========================================
+# APPLICATION PROPERTIES - GITIGNORED
+# ========================================
+# Each developer/environment sets their own
+# Use application.properties.example as template
+**/application.properties
+**/application.yml
+**/application.yaml
+**/application-*.properties
+**/application-*.yml
+**/application-*.yaml
+
+# Keep the example files
+!**/application.properties.example
+!**/application.yml.example
+
+# ========================================
+# OTHER SECRETS
+# ========================================
+.env
+.env.*
+
+# Ignore Docker volumes
+volumes/
