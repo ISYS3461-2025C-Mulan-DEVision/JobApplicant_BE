@@ -8,7 +8,10 @@
         <groupId>com.team.ja</groupId>
         <artifactId>jobapplicant-parent</artifactId>
         <version>0.0.1-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
+    
+    <packaging>jar</packaging>
     
     <artifactId>common</artifactId>
     <name>Common Module</name>
