@@ -4,7 +4,6 @@ import com.team.ja.common.dto.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,7 +27,8 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 ex.getErrorCode());
 
-        return new ResponseEntity<>(response, ex.getHttpStatus());
+        HttpStatus status = ex.getHttpStatus() != null ? ex.getHttpStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+        return ResponseEntity.status(status.value()).body(response);
     }
 
     // ========================================
@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
                 "VALIDATION_ERROR",
                 errors);
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     // ========================================
@@ -59,9 +59,9 @@ public class GlobalExceptionHandler {
     // ========================================
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = String.format("Parameter '%s' should be of type '%s'",
-                ex.getName(),
-                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+        Class<?> requiredType = ex.getRequiredType();
+        String typeName = requiredType != null ? requiredType.getSimpleName() : "unknown";
+        String message = String.format("Parameter '%s' should be of type '%s'", ex.getName(), typeName);
 
         log.warn("Type mismatch: {}", message);
 
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
                 message,
                 "TYPE_MISMATCH");
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     // ========================================
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
                 ex.getMessage(),
                 "INVALID_ARGUMENT");
 
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     // ========================================
@@ -97,6 +97,6 @@ public class GlobalExceptionHandler {
                 "An unexpected error occurred",
                 "INTERNAL_ERROR");
 
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }
