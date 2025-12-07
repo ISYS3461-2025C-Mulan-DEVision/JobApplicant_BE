@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.0</version>
+        <version>3.4.0</version>
         <relativePath/>
     </parent>
     
@@ -36,9 +36,9 @@
         <module>common</module>
         <module>services/auth-service</module>
         <module>services/user-service</module>
-        <module>services/job-service</module>
+        <!-- <module>services/job-service</module> -->
         <module>services/application-service</module>
-        <module>services/company-service</module>
+        <!-- <module>services/company-service</module> -->
         <module>services/notification-service</module>
         <module>services/subscription-service</module>
         <module>services/admin-service</module>

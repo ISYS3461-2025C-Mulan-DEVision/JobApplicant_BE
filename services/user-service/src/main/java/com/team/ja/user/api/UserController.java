@@ -1,36 +1,49 @@
 package com.team.ja.user.api;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.user.dto.response.UserResponse;
+import com.team.ja.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+import java.util.UUID;
 
+/**
+ * REST controller for User operations.
+ */
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "User", description = "User profile and management endpoints")
+@RequiredArgsConstructor
+@Tag(name = "User", description = "User management endpoints")
 public class UserController {
+
+    private final UserService userService;
 
     @GetMapping("/health")
     @Operation(summary = "Health check", description = "Check if the user service is running")
-    public ApiResponse<Map<String, String>> health() {
-        Map<String, String> status = new HashMap<>();
-        status.put("service", "user-service");
-        status.put("status", "UP");
-        return ApiResponse.success("User Service is running", status);
+    public ApiResponse<String> health() {
+        return ApiResponse.success("User Service is running");
     }
 
-    @GetMapping("/info")
-    @Operation(summary = "Service info", description = "Get user service information")
-    public ApiResponse<Map<String, String>> info() {
-        Map<String, String> info = new HashMap<>();
-        info.put("service", "user-service");
-        info.put("version", "0.0.1");
-        info.put("description", "User Profile and Education Management Service");
-        info.put("handles", "User, UserEducation, UserWorkExperience, UserSkill, Country, EmploymentType, EducationLevel, Skill");
-        return ApiResponse.success(info);
+    @GetMapping
+    @Operation(summary = "Get all users", description = "Retrieve all active users")
+    public ApiResponse<List<UserResponse>> getAllUsers() {
+        // return ApiResponse.success(userService.getAllUsers());
+        return ApiResponse.success("Fetch data successfully", userService.getAllUsers());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get user by ID", description = "Retrieve a user by their ID")
+    public ApiResponse<UserResponse> getUserById(@PathVariable UUID id) {
+        return ApiResponse.success(userService.getUserById(id));
+    }
+
+    @GetMapping("/email/{email}")
+    @Operation(summary = "Get user by email", description = "Retrieve a user by their email")
+    public ApiResponse<UserResponse> getUserByEmail(@PathVariable String email) {
+        return ApiResponse.success(userService.getUserByEmail(email));
     }
 }
-
