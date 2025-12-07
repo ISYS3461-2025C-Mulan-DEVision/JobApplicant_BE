@@ -38,7 +38,7 @@ public class UserWorkExperienceResponse {
     private LocalDate endAt;
 
     @Schema(description = "Whether this is current job")
-    private boolean isCurrent;
+    private boolean current;
 
     @Schema(description = "Job description")
     private String description;

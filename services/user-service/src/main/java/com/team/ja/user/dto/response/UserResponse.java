@@ -37,10 +37,10 @@ public class UserResponse {
     private String objectiveSummary;
 
     @Schema(description = "Whether user has premium subscription")
-    private boolean isPremium;
+    private boolean premium;
 
     @Schema(description = "Whether user account is active")
-    private boolean isActive;
+    private boolean active;
 
     @Schema(description = "Account creation date")
     private LocalDateTime createdAt;

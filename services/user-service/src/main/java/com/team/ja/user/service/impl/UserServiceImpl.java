@@ -1,6 +1,5 @@
 package com.team.ja.user.service.impl;
 
-import com.team.ja.common.enumeration.ApplicationStatus;
 import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.dto.response.UserResponse;
 import com.team.ja.user.mapper.CountryMapper;

@@ -25,6 +25,7 @@ public class CountryServiceImpl implements CountryService {
 
     @Override
     public List<CountryResponse> getAllCountries() {
+        log.info("Fetching all active countries");
         return countryMapper.toResponseList(
                 countryRepository.findByIsActiveTrueOrderByNameAsc());
     }
