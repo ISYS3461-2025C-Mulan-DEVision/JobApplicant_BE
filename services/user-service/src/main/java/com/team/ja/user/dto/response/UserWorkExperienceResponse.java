@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * User work experience response DTO.
@@ -18,6 +19,9 @@ import java.time.LocalDate;
 @Builder
 @Schema(description = "User work experience information")
 public class UserWorkExperienceResponse {
+
+    @Schema(description = "Work experience record ID")
+    private UUID id;
 
     @Schema(description = "Job title", example = "Software Engineer")
     private String jobTitle;
