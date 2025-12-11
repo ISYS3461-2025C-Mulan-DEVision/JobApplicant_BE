@@ -1,43 +1,62 @@
 package com.team.ja.gateway.api;
 
-import com.team.ja.common.dto.ApiResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Gateway info and health endpoints.
+ * Uses reactive types (Mono) for Spring Cloud Gateway compatibility.
+ */
 @RestController
 @RequestMapping("/api/v1/gateway")
 public class GatewayController {
 
+    private final RouteLocator routeLocator;
+
+    @Value("${spring.application.name}")
+    private String applicationName;
+
+    public GatewayController(RouteLocator routeLocator) {
+        this.routeLocator = routeLocator;
+    }
+
     @GetMapping("/health")
-    public ApiResponse<Map<String, String>> health() {
-        Map<String, String> status = new HashMap<>();
-        status.put("service", "api-gateway");
-        status.put("status", "UP");
-        return ApiResponse.success("API Gateway is running", status);
+    public Mono<Map<String, Object>> health() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("service", applicationName);
+        response.put("message", "API Gateway is running");
+        return Mono.just(response);
     }
 
     @GetMapping("/info")
-    public ApiResponse<Map<String, String>> info() {
-        Map<String, String> info = new HashMap<>();
-        info.put("service", "api-gateway");
-        info.put("version", "0.0.1");
-        info.put("description", "API Gateway - Entry point for all requests");
-        return ApiResponse.success(info);
+    public Mono<Map<String, Object>> info() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("service", applicationName);
+        response.put("version", "0.0.1");
+        response.put("description", "API Gateway - Entry point for all requests");
+        return Mono.just(response);
     }
 
-    @GetMapping("/services")
-    public ApiResponse<Map<String, String>> services() {
-        Map<String, String> services = new HashMap<>();
-        services.put("auth-service", "http://localhost:8081");
-        services.put("job-service", "http://localhost:8082");
-        services.put("application-service", "http://localhost:8083");
-        services.put("company-service", "http://localhost:8084");
-        return ApiResponse.success("Available services", services);
+    @GetMapping("/routes")
+    public Mono<Map<String, Object>> routes() {
+        return routeLocator.getRoutes()
+                .map(route -> Map.of(
+                        "id", route.getId(),
+                        "uri", route.getUri().toString()))
+                .collectList()
+                .map(routes -> {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("routes", routes);
+                    response.put("count", routes.size());
+                    return response;
+                });
     }
-
 }
-
