@@ -1,12 +1,30 @@
 package com.team.ja.user.service.impl;
 
+import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
+import com.team.ja.user.dto.request.CreateUserRequest;
+import com.team.ja.user.dto.request.UpdateUserRequest;
+import com.team.ja.user.dto.response.SkillResponse;
+import com.team.ja.user.dto.response.UserEducationResponse;
+import com.team.ja.user.dto.response.UserProfileResponse;
 import com.team.ja.user.dto.response.UserResponse;
+import com.team.ja.user.dto.response.UserWorkExperienceResponse;
 import com.team.ja.user.mapper.CountryMapper;
+import com.team.ja.user.mapper.SkillMapper;
+import com.team.ja.user.mapper.UserEducationMapper;
 import com.team.ja.user.mapper.UserMapper;
+import com.team.ja.user.mapper.UserWorkExperienceMapper;
+import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
+import com.team.ja.user.model.UserEducation;
+import com.team.ja.user.model.UserSkill;
+import com.team.ja.user.model.UserWorkExperience;
 import com.team.ja.user.repository.CountryRepository;
+import com.team.ja.user.repository.SkillRepository;
+import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
+import com.team.ja.user.repository.UserSkillRepository;
+import com.team.ja.user.repository.UserWorkExperienceRepository;
 import com.team.ja.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,18 +44,83 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserEducationRepository userEducationRepository;
+    private final UserWorkExperienceRepository userWorkExperienceRepository;
+    private final UserSkillRepository userSkillRepository;
+    private final SkillRepository skillRepository;
     private final CountryRepository countryRepository;
+    
     private final UserMapper userMapper;
+    private final UserEducationMapper userEducationMapper;
+    private final UserWorkExperienceMapper userWorkExperienceMapper;
+    private final SkillMapper skillMapper;
     private final CountryMapper countryMapper;
 
     @Override
-    public List<UserResponse> getAllUsers() {
-        log.info("Fetching all active users");
-        List<User> users = userRepository.findAll();
-        return users.stream()
+    @Transactional
+    public UserResponse createUser(CreateUserRequest request) {
+        log.info("Creating new user with email: {}", request.getEmail());
+        
+        // Check if email already exists
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("User with email " + request.getEmail() + " already exists");
+        }
+        
+        // Validate country if provided
+        if (request.getCountryId() != null) {
+            countryRepository.findById(request.getCountryId())
+                    .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
+        }
+        
+        User user = User.builder()
+                .email(request.getEmail())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phone(request.getPhone())
+                .countryId(request.getCountryId())
+                .objectiveSummary(request.getObjectiveSummary())
+                .build();
+        
+        User savedUser = userRepository.save(user);
+        log.info("Created user with ID: {}", savedUser.getId());
+        
+        return mapUserWithCountry(savedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
+        log.info("Updating user with ID: {}", userId);
+        
+        User user = userRepository.findById(userId)
                 .filter(User::isActive)
-                .map(this::mapUserWithCountry)
-                .toList();
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        
+        // Update fields if provided
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone());
+        }
+        if (request.getCountryId() != null) {
+            // Validate country exists
+            countryRepository.findById(request.getCountryId())
+                    .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
+            user.setCountryId(request.getCountryId());
+        }
+        if (request.getObjectiveSummary() != null) {
+            user.setObjectiveSummary(request.getObjectiveSummary());
+        }
+        
+        user.markProfileUpdated();
+        User savedUser = userRepository.save(user);
+        
+        log.info("Updated user with ID: {}", savedUser.getId());
+        return mapUserWithCountry(savedUser);
     }
 
     @Override
@@ -57,13 +140,102 @@ public class UserServiceImpl implements UserService {
         return mapUserWithCountry(user);
     }
 
+    @Override
+    public UserProfileResponse getUserProfile(UUID userId) {
+        log.info("Fetching complete profile for user: {}", userId);
+        
+        // Fetch user
+        User user = userRepository.findById(userId)
+                .filter(User::isActive)
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        
+        // Fetch related data
+        List<UserEducation> education = userEducationRepository
+                .findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
+        
+        List<UserWorkExperience> workExperience = userWorkExperienceRepository
+                .findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
+        
+        List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+        List<UUID> skillIds = userSkills.stream().map(UserSkill::getSkillId).toList();
+        List<Skill> skills = skillIds.isEmpty() ? List.of() : skillRepository.findByIdInAndIsActiveTrue(skillIds);
+        
+        // Map education with country
+        List<UserEducationResponse> educationResponses = education.stream()
+                .map(userEducationMapper::toResponse)
+                .toList();
+        
+        // Map work experience with country
+        List<UserWorkExperienceResponse> workExpResponses = workExperience.stream()
+                .map(this::mapWorkExperienceWithCountry)
+                .toList();
+        
+        // Map skills
+        List<SkillResponse> skillResponses = skillMapper.toResponseList(skills);
+        
+        return UserProfileResponse.builder()
+                .user(mapUserWithCountry(user))
+                .education(educationResponses)
+                .workExperience(workExpResponses)
+                .skills(skillResponses)
+                .build();
+    }
+
+    @Override
+    public List<UserResponse> getAllUsers() {
+        log.info("Fetching all active users");
+        List<User> users = userRepository.findAll();
+        return users.stream()
+                .filter(User::isActive)
+                .map(this::mapUserWithCountry)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deactivateUser(UUID userId) {
+        log.info("Deactivating user with ID: {}", userId);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        
+        user.deactivate();
+        userRepository.save(user);
+        
+        log.info("Deactivated user with ID: {}", userId);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse reactivateUser(UUID userId) {
+        log.info("Reactivating user with ID: {}", userId);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        
+        if (user.isActive()) {
+            log.warn("User {} is already active", userId);
+            return mapUserWithCountry(user);
+        }
+        
+        user.activate();
+        User savedUser = userRepository.save(user);
+        
+        log.info("Reactivated user with ID: {}", userId);
+        return mapUserWithCountry(savedUser);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
     /**
      * Map User entity to UserResponse with nested Country.
      */
     private UserResponse mapUserWithCountry(User user) {
         UserResponse response = userMapper.toResponse(user);
         
-        // Fetch and set country if exists
         if (user.getCountryId() != null) {
             countryRepository.findById(user.getCountryId())
                     .map(countryMapper::toResponse)
@@ -72,5 +244,19 @@ public class UserServiceImpl implements UserService {
         
         return response;
     }
-}
 
+    /**
+     * Map UserWorkExperience to response with nested Country.
+     */
+    private UserWorkExperienceResponse mapWorkExperienceWithCountry(UserWorkExperience workExp) {
+        UserWorkExperienceResponse response = userWorkExperienceMapper.toResponse(workExp);
+        
+        if (workExp.getCountryId() != null) {
+            countryRepository.findById(workExp.getCountryId())
+                    .map(countryMapper::toResponse)
+                    .ifPresent(response::setCountry);
+        }
+        
+        return response;
+    }
+}

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * User education response DTO.
@@ -18,6 +19,9 @@ import java.time.LocalDate;
 @Builder
 @Schema(description = "User education information")
 public class UserEducationResponse {
+
+    @Schema(description = "Education record ID")
+    private UUID id;
 
     @Schema(description = "Institution name", example = "MIT")
     private String institution;

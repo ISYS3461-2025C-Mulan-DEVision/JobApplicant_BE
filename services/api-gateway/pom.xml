@@ -16,17 +16,13 @@
     <description>API Gateway Service - Entry point for all requests</description>
     
     <dependencies>
-        <!-- Common module -->
+        <!-- Spring Cloud Gateway (Reactive) -->
         <dependency>
-            <groupId>com.team.ja</groupId>
-            <artifactId>common</artifactId>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
         
-        <!-- Spring Boot starters -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
+        <!-- Actuator for health checks -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -57,4 +53,3 @@
     </build>
     
 </project>
-
