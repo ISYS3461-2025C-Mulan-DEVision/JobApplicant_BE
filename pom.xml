@@ -37,6 +37,7 @@
     
     <modules>
         <module>common</module>
+        <module>services/eureka-server</module>
         <module>services/auth-service</module>
         <module>services/user-service</module>
         <!-- <module>services/job-service</module> -->
