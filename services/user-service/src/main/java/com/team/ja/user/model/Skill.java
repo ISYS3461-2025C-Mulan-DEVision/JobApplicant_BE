@@ -15,7 +15,7 @@ import lombok.experimental.SuperBuilder;
  * Contains list of skills that users can add to their profile.
  */
 @Entity
-@Table(name = "skills", schema = "user_schema")
+@Table(name = "skills")
 @Getter
 @Setter
 @NoArgsConstructor

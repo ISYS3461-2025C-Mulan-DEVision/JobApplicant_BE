@@ -17,7 +17,7 @@ import java.util.UUID;
  * Stores educational background of a user.
  */
 @Entity
-@Table(name = "user_education", schema = "user_schema")
+@Table(name = "user_education")
 @Getter
 @Setter
 @NoArgsConstructor

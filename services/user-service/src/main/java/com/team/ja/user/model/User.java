@@ -22,7 +22,7 @@ import java.util.UUID;
  * - isActive, deactivatedAt (for soft delete)
  */
 @Entity
-@Table(name = "users", schema = "user_schema")
+@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * User response DTO.
@@ -17,6 +18,9 @@ import java.time.LocalDateTime;
 @Builder
 @Schema(description = "User information")
 public class UserResponse {
+
+    @Schema(description = "User ID")
+    private UUID id;
 
     @Schema(description = "User's email", example = "john.doe@example.com")
     private String email;
