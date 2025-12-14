@@ -15,7 +15,7 @@ import lombok.experimental.SuperBuilder;
  * Contains list of countries for user profile and work experience.
  */
 @Entity
-@Table(name = "countries", schema = "user_schema")
+@Table(name = "countries")
 @Getter
 @Setter
 @NoArgsConstructor
