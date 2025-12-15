@@ -17,7 +17,7 @@ import java.util.UUID;
  * Stores professional work history of a user.
  */
 @Entity
-@Table(name = "user_work_experience", schema = "user_schema")
+@Table(name = "user_work_experience")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -53,4 +53,3 @@ public class UserWorkExperience extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 }
-

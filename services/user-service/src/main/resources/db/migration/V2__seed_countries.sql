@@ -4,7 +4,7 @@
 -- ISO 3166-1 country data (common countries)
 -- =============================================
 
-INSERT INTO user_schema.countries (id, name, abbreviation, is_active, created_at, updated_at) VALUES
+INSERT INTO countries (id, name, abbreviation, is_active, created_at, updated_at) VALUES
 -- Asia
 (gen_random_uuid(), 'Vietnam', 'VN', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 (gen_random_uuid(), 'Japan', 'JP', TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),

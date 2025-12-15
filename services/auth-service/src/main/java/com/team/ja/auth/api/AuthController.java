@@ -1,60 +1,62 @@
 package com.team.ja.auth.api;
 
+import com.team.ja.auth.dto.request.LoginRequest;
+import com.team.ja.auth.dto.request.RefreshTokenRequest;
+import com.team.ja.auth.dto.request.RegisterRequest;
+import com.team.ja.auth.dto.response.AuthResponse;
+import com.team.ja.auth.service.AuthService;
 import com.team.ja.common.dto.ApiResponse;
-import com.team.ja.common.exception.NotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-
+/**
+ * Authentication REST controller.
+ * Handles registration, login, and token refresh.
+ */
 @RestController
 @RequestMapping("/api/v1/auth")
-@Tag(name = "Authentication", description = "Authentication and user management endpoints")
+@RequiredArgsConstructor
+@Tag(name = "Authentication", description = "Authentication endpoints")
 public class AuthController {
 
+    private final AuthService authService;
+
     @GetMapping("/health")
-    @Operation(summary = "Health check", description = "Check if the auth service is running")
-    public ApiResponse<Map<String, String>> health() {
-        Map<String, String> status = new HashMap<>();
-        status.put("service", "auth-service");
-        status.put("status", "UP");
-        return ApiResponse.success("Auth Service is running", status);
+    @Operation(summary = "Health check", description = "Check if auth service is running")
+    public ApiResponse<String> health() {
+        return ApiResponse.success("Auth Service is running");
     }
 
-    @GetMapping("/info")
-    @Operation(summary = "Service info", description = "Get auth service information")
-    public ApiResponse<Map<String, String>> info() {
-        Map<String, String> info = new HashMap<>();
-        info.put("service", "auth-service");
-        info.put("version", "0.0.1");
-        info.put("description", "Authentication and User Management Service");
-        return ApiResponse.success(info);
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Register", description = "Register a new user account")
+    public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        AuthResponse response = authService.register(request);
+        return ApiResponse.success("Registration successful", response);
     }
 
-    // Example endpoint demonstrating exception handling
-    @GetMapping("/demo/user/{id}")
-    @Operation(summary = "Demo: Get user by ID", description = "Demonstrates exception handling - throws NotFoundException for id > 100")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "User found"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found")
-    })
-    public ApiResponse<Map<String, Object>> getDemoUser(
-            @Parameter(description = "User ID (use > 100 to trigger 404)") 
-            @PathVariable Long id) {
-        
-        // Demo: Throw NotFoundException for IDs > 100
-        if (id > 100) {
-            throw new NotFoundException("User", id);
-        }
+    @PostMapping("/login")
+    @Operation(summary = "Login", description = "Authenticate and get access tokens")
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ApiResponse.success("Login successful", response);
+    }
 
-        Map<String, Object> user = new HashMap<>();
-        user.put("id", id);
-        user.put("email", "user" + id + "@example.com");
-        user.put("name", "Demo User " + id);
-        return ApiResponse.success(user);
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh token", description = "Get new access token using refresh token")
+    public ApiResponse<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        AuthResponse response = authService.refreshToken(request);
+        return ApiResponse.success("Token refreshed", response);
+    }
+
+    @GetMapping("/validate")
+    @Operation(summary = "Validate token", description = "Check if a token is valid")
+    public ApiResponse<Boolean> validateToken(@RequestParam String token) {
+        boolean isValid = authService.validateToken(token);
+        return ApiResponse.success(isValid);
     }
 }
