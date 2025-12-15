@@ -44,7 +44,6 @@ import java.util.UUID;
 public abstract class BaseEntity implements Persistable<UUID> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
@@ -104,5 +103,16 @@ public abstract class BaseEntity implements Persistable<UUID> {
     public boolean isNew() {
         // If no createdAt yet, the entity hasn't been persisted
         return createdAt == null;
+    }
+
+    /**
+     * Ensure an ID is assigned for entities that rely on auto-generated UUIDs.
+     * For externally assigned IDs (e.g. via events), the ID will already be set.
+     */
+    @PrePersist
+    protected void assignIdIfNecessary() {
+        if (this.id == null) {
+            this.id = UUID.randomUUID();
+        }
     }
 }
