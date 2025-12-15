@@ -59,6 +59,9 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         AuthCredential savedCredential = authCredentialRepository.save(credential);
+        // Align userId with primary key so downstream services share the same UUID
+        savedCredential.setUserId(savedCredential.getId());
+        savedCredential = authCredentialRepository.save(savedCredential);
         log.info("Created auth credential for: {}", request.getEmail());
 
         // Publish Kafka event for user-service to create user profile
@@ -73,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
         // Generate tokens
         String accessToken = jwtService.generateAccessToken(
                 savedCredential,
-                savedCredential.getUserId(),
+                savedCredential.getId(),
                 savedCredential.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(savedCredential);
 
@@ -83,7 +86,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .expiresIn(accessTokenExpiration / 1000) // Convert to seconds
-                .userId(savedCredential.getUserId())
+                .userId(savedCredential.getId())
                 .email(savedCredential.getEmail())
                 .role(savedCredential.getRole().name())
                 .build();
@@ -126,7 +129,7 @@ public class AuthServiceImpl implements AuthService {
         // Generate tokens
         String accessToken = jwtService.generateAccessToken(
                 credential,
-                credential.getUserId(),
+                credential.getId(),
                 credential.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(credential);
 
@@ -136,7 +139,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .expiresIn(accessTokenExpiration / 1000)
-                .userId(credential.getUserId())
+                .userId(credential.getId())
                 .email(credential.getEmail())
                 .role(credential.getRole().name())
                 .build();
@@ -168,7 +171,7 @@ public class AuthServiceImpl implements AuthService {
         // Generate new access token
         String newAccessToken = jwtService.generateAccessToken(
                 credential,
-                credential.getUserId(),
+                credential.getId(),
                 credential.getRole().name());
 
         log.info("Access token refreshed for: {}", email);
@@ -177,7 +180,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken) // Return same refresh token
                 .expiresIn(accessTokenExpiration / 1000)
-                .userId(credential.getUserId())
+                .userId(credential.getId())
                 .email(credential.getEmail())
                 .role(credential.getRole().name())
                 .build();
