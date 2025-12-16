@@ -15,6 +15,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @Schema(description = "Skill information")
 public class SkillResponse {
+    @Schema(description = "Skill ID")
+    private String id;
 
     @Schema(description = "Skill name", example = "Java")
     private String name;
@@ -22,4 +24,3 @@ public class SkillResponse {
     @Schema(description = "Skill usage count (popularity)")
     private int usageCount;
 }
-
