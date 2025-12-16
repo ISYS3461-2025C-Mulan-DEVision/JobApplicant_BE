@@ -25,6 +25,11 @@ public interface UserSkillRepository extends JpaRepository<UserSkill, UUID> {
     Optional<UserSkill> findByUserIdAndSkillIdAndIsActiveTrue(UUID userId, UUID skillId);
 
     /**
+     * Find a specific user-skill mapping (including inactive).
+     */
+    Optional<UserSkill> findByUserIdAndSkillId(UUID userId, UUID skillId);
+
+    /**
      * Check if user already has this skill.
      */
     boolean existsByUserIdAndSkillIdAndIsActiveTrue(UUID userId, UUID skillId);
@@ -39,4 +44,3 @@ public interface UserSkillRepository extends JpaRepository<UserSkill, UUID> {
      */
     void deleteByUserId(UUID userId);
 }
-
