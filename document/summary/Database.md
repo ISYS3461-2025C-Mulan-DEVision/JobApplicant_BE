@@ -172,13 +172,20 @@ erDiagram
         UUID id PK
         UUID userId FK
         UUID jobPostId FK
-        string status "APPLIED, REVIEWED, INTERVIEW, REJECTED, OFFERED"
-        string resumeUrl "MinIO S3 URL"
-        string coverLetterUrl "MinIO S3 URL"
-        json additionalFiles "['url1', 'url2']"
+        string status "SUBMITTED, REVIEW, INTERVIEW, OFFERED, REJECTED, WITHDRAWN"
+        string resumeUrl "SeaweedFS S3 URL"
+        string coverLetterUrl "SeaweedFS S3 URL (optional)"
+        json additionalFiles "['url1', 'url2', ...]"
+        string userNotes "Notes from applicant"
+        string adminNotes "Notes from system admin"
+        string companyUserNotes "Notes from company/recruiter"
         DateTime appliedAt
         DateTime applicationStatusUpdatedAt
-        DateTime deletedAt
+        DateTime createdAt "Inherited from BaseEntity"
+        DateTime updatedAt "Inherited from BaseEntity"
+        boolean isActive "Inherited from BaseEntity"
+        DateTime deactivatedAt "Inherited from BaseEntity"
+        DateTime deletedAt "Soft delete timestamp"
     }
 
     UserSubscription {
