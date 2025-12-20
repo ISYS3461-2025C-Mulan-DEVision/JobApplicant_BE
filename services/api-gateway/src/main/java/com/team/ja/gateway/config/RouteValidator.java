@@ -21,6 +21,7 @@ public class RouteValidator {
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
             "/api/v1/auth/health",
+            "/api/v1/auth/activate",
             
             // Actuator endpoints
             "/actuator",
