@@ -26,35 +26,82 @@ public class AuthController {
     private final AuthService authService;
 
     @GetMapping("/health")
-    @Operation(summary = "Health check", description = "Check if auth service is running")
+    @Operation(
+        summary = "Health check",
+        description = "Check if auth service is running"
+    )
     public ApiResponse<String> health() {
         return ApiResponse.success("Auth Service is running");
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Register", description = "Register a new user account")
-    public ApiResponse<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        AuthResponse response = authService.register(request);
-        return ApiResponse.success("Registration successful", response);
+    @Operation(
+        summary = "Register",
+        description = "Register a new user account and send activation email"
+    )
+    public ApiResponse<String> register(
+        @Valid @RequestBody RegisterRequest request
+    ) {
+        authService.register(request);
+        return ApiResponse.success(
+            "Registration successful. Please check your email to activate your account."
+        );
+    }
+
+    @GetMapping("/activate")
+    @Operation(
+        summary = "Activate account",
+        description = "Activate user account using a verification token"
+    )
+    public ApiResponse<AuthResponse> activateAccount(
+        @RequestParam String token
+    ) {
+        AuthResponse response = authService.activateAccount(token);
+        return ApiResponse.success("Account activated successfully", response);
+    }
+
+    @PostMapping("/resend-activation")
+    @Operation(
+        summary = "Resend activation email",
+        description = "Resend activation email if previous token expired or the email was lost"
+    )
+    public ApiResponse<String> resendActivation(@RequestParam String email) {
+        authService.resendActivationEmail(email);
+        return ApiResponse.success(
+            "If the account is inactive, a new activation email has been sent."
+        );
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login", description = "Authenticate and get access tokens")
-    public ApiResponse<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    @Operation(
+        summary = "Login",
+        description = "Authenticate and get access tokens"
+    )
+    public ApiResponse<AuthResponse> login(
+        @Valid @RequestBody LoginRequest request
+    ) {
         AuthResponse response = authService.login(request);
         return ApiResponse.success("Login successful", response);
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh token", description = "Get new access token using refresh token")
-    public ApiResponse<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+    @Operation(
+        summary = "Refresh token",
+        description = "Get new access token using refresh token"
+    )
+    public ApiResponse<AuthResponse> refreshToken(
+        @Valid @RequestBody RefreshTokenRequest request
+    ) {
         AuthResponse response = authService.refreshToken(request);
         return ApiResponse.success("Token refreshed", response);
     }
 
     @GetMapping("/validate")
-    @Operation(summary = "Validate token", description = "Check if a token is valid")
+    @Operation(
+        summary = "Validate token",
+        description = "Check if a token is valid"
+    )
     public ApiResponse<Boolean> validateToken(@RequestParam String token) {
         boolean isValid = authService.validateToken(token);
         return ApiResponse.success(isValid);
