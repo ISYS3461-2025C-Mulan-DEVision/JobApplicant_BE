@@ -25,10 +25,7 @@ public class UserRegisteredConsumer {
      * Handle user registered event.
      * Creates a new user profile with the same userId from auth-service.
      */
-    @KafkaListener(
-            topics = KafkaTopics.USER_REGISTERED,
-            groupId = "${spring.kafka.consumer.group-id}"
-    )
+    @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void handleUserRegistered(UserRegisteredEvent event) {
         log.info("Received user-registered event for userId: {}", event.getUserId());
@@ -41,7 +38,7 @@ public class UserRegisteredConsumer {
 
         // Create user profile
         User user = User.builder()
-                .id(event.getUserId())  // Use same ID from auth-service
+                .id(event.getUserId()) // Use same ID from auth-service
                 .email(event.getEmail())
                 .firstName(event.getFirstName())
                 .lastName(event.getLastName())
@@ -51,4 +48,3 @@ public class UserRegisteredConsumer {
         log.info("User profile created for userId: {}", event.getUserId());
     }
 }
-

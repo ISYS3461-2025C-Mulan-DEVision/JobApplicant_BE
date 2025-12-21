@@ -49,7 +49,7 @@ public class UserServiceImpl implements UserService {
     private final UserSkillRepository userSkillRepository;
     private final SkillRepository skillRepository;
     private final CountryRepository countryRepository;
-    
+
     private final UserMapper userMapper;
     private final UserEducationMapper userEducationMapper;
     private final UserWorkExperienceMapper userWorkExperienceMapper;
@@ -60,18 +60,18 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         log.info("Creating new user with email: {}", request.getEmail());
-        
+
         // Check if email already exists
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException("User with email " + request.getEmail() + " already exists");
         }
-        
+
         // Validate country if provided
         if (request.getCountryId() != null) {
             countryRepository.findById(request.getCountryId())
                     .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
         }
-        
+
         User user = User.builder()
                 .email(request.getEmail())
                 .firstName(request.getFirstName())
@@ -80,10 +80,10 @@ public class UserServiceImpl implements UserService {
                 .countryId(request.getCountryId())
                 .objectiveSummary(request.getObjectiveSummary())
                 .build();
-        
+
         User savedUser = userRepository.save(user);
         log.info("Created user with ID: {}", savedUser.getId());
-        
+
         return mapUserWithCountry(savedUser);
     }
 
@@ -91,11 +91,11 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
         log.info("Updating user with ID: {}", userId);
-        
+
         User user = userRepository.findById(userId)
                 .filter(User::isActive)
                 .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+
         // Update fields if provided
         if (request.getFirstName() != null) {
             user.setFirstName(request.getFirstName());
@@ -115,10 +115,10 @@ public class UserServiceImpl implements UserService {
         if (request.getObjectiveSummary() != null) {
             user.setObjectiveSummary(request.getObjectiveSummary());
         }
-        
+
         user.markProfileUpdated();
         User savedUser = userRepository.save(user);
-        
+
         log.info("Updated user with ID: {}", savedUser.getId());
         return mapUserWithCountry(savedUser);
     }
@@ -143,36 +143,36 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileResponse getUserProfile(UUID userId) {
         log.info("Fetching complete profile for user: {}", userId);
-        
+
         // Fetch user
         User user = userRepository.findById(userId)
                 .filter(User::isActive)
                 .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+
         // Fetch related data
         List<UserEducation> education = userEducationRepository
                 .findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
-        
+
         List<UserWorkExperience> workExperience = userWorkExperienceRepository
                 .findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
-        
+
         List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
         List<UUID> skillIds = userSkills.stream().map(UserSkill::getSkillId).toList();
         List<Skill> skills = skillIds.isEmpty() ? List.of() : skillRepository.findByIdInAndIsActiveTrue(skillIds);
-        
+
         // Map education with country
         List<UserEducationResponse> educationResponses = education.stream()
                 .map(userEducationMapper::toResponse)
                 .toList();
-        
+
         // Map work experience with country
         List<UserWorkExperienceResponse> workExpResponses = workExperience.stream()
                 .map(this::mapWorkExperienceWithCountry)
                 .toList();
-        
+
         // Map skills
         List<SkillResponse> skillResponses = skillMapper.toResponseList(skills);
-        
+
         return UserProfileResponse.builder()
                 .user(mapUserWithCountry(user))
                 .education(educationResponses)
@@ -195,13 +195,13 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deactivateUser(UUID userId) {
         log.info("Deactivating user with ID: {}", userId);
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+
         user.deactivate();
         userRepository.save(user);
-        
+
         log.info("Deactivated user with ID: {}", userId);
     }
 
@@ -209,18 +209,18 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse reactivateUser(UUID userId) {
         log.info("Reactivating user with ID: {}", userId);
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+
         if (user.isActive()) {
             log.warn("User {} is already active", userId);
             return mapUserWithCountry(user);
         }
-        
+
         user.activate();
         User savedUser = userRepository.save(user);
-        
+
         log.info("Reactivated user with ID: {}", userId);
         return mapUserWithCountry(savedUser);
     }
@@ -235,13 +235,13 @@ public class UserServiceImpl implements UserService {
      */
     private UserResponse mapUserWithCountry(User user) {
         UserResponse response = userMapper.toResponse(user);
-        
+
         if (user.getCountryId() != null) {
             countryRepository.findById(user.getCountryId())
                     .map(countryMapper::toResponse)
                     .ifPresent(response::setCountry);
         }
-        
+
         return response;
     }
 
@@ -250,13 +250,13 @@ public class UserServiceImpl implements UserService {
      */
     private UserWorkExperienceResponse mapWorkExperienceWithCountry(UserWorkExperience workExp) {
         UserWorkExperienceResponse response = userWorkExperienceMapper.toResponse(workExp);
-        
+
         if (workExp.getCountryId() != null) {
             countryRepository.findById(workExp.getCountryId())
                     .map(countryMapper::toResponse)
                     .ifPresent(response::setCountry);
         }
-        
+
         return response;
     }
 }

@@ -37,5 +37,31 @@ public final class KafkaTopics {
      * Consumer: notification-service
      */
     public static final String APPLICATION_SUBMITTED = "application-submitted";
-}
 
+    /**
+     * Topic for admin request user data
+     * Producer: admin-service
+     * Consumer: user-service
+     */
+    public static final String ADMIN_REQUEST_USER_DATA = "admin-request-user-data";
+
+    /**
+     * Topic for user data response to admin
+     * Producer: user-service
+     * Consumer: admin-service
+     */
+    public static final String ADMIN_REPLY_USER_DATA = "admin-reply-user-data";
+
+    /**
+     * Topic for admin request skill data
+     * Producer: admin-service
+     * Consumer: user-service
+     */
+    public static final String ADMIN_REQUEST_SKILL_DATA = "admin-request-skill-data";
+    /**
+     * Topic for skill data response to admin
+     * Producer: user-service
+     * Consumer: admin-service
+     */
+    public static final String ADMIN_REPLY_SKILL_DATA = "admin-reply-skill-data";
+}

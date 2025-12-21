@@ -397,11 +397,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://admin-db:5432/admin_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
     depends_on:
       admin-db:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - ja-network
