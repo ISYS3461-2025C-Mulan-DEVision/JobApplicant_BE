@@ -143,7 +143,15 @@ services:
         image: ja-eureka-server
         container_name: ja-eureka-server
         ports:
-            - "8761:8761"
+            - "${EUREKA_PORT}:8761"
+        environment:
+            SPRING_APPLICATION_NAME: ${EUREKA_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${EUREKA_SERVER_PORT}
+            EUREKA_CLIENT_REGISTER_WITH_EUREKA: ${EUREKA_CLIENT_REGISTER_WITH_EUREKA}
+            EUREKA_CLIENT_FETCH_REGISTRY: ${EUREKA_CLIENT_FETCH_REGISTRY}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE}
+            MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS}
         networks:
             - ja-network
         healthcheck:
@@ -269,11 +277,14 @@ services:
             dockerfile: Dockerfile
         container_name: ja-api-gateway
         ports:
-            - "8080:8080"
+            - "${API_GATEWAY_PORT}:8080"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-            JWT_SECRET: ${JWT_SECRET:-dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5zaWduaW5nYW5kaXRzaG91bGRiZWF0bGVhc3QyNTZiaXRz}
+            SPRING_APPLICATION_NAME: ${API_GATEWAY_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${API_GATEWAY_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${API_GATEWAY_SPRING_PROFILES_ACTIVE}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            JWT_SECRET: ${JWT_SECRET}
+            SPRING_CLOUD_GATEWAY_CORS_ALLOWED_ORIGINS: ${SPRING_CLOUD_GATEWAY_CORS_ALLOWED_ORIGINS}
         depends_on:
             eureka-server:
                 condition: service_healthy
@@ -286,28 +297,36 @@ services:
             dockerfile: Dockerfile
         container_name: ja-auth-service
         ports:
-            - "8081:8081"
+            - "${AUTH_SERVICE_PORT}:8081"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/auth_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${AUTH_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${AUTH_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${AUTH_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${AUTH_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${AUTH_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${AUTH_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
             # JWT configuration
-            JWT_SECRET: ${JWT_SECRET:-dGhpc2lzYXZlcnlsb25nc2VjcmV0a2V5Zm9yand0dG9rZW5zaWduaW5nYW5kaXRzaG91bGRiZWF0bGVhc3QyNTZiaXRz}
-            JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION:-3600000}
-            JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION:-604800000}
+            JWT_SECRET: ${JWT_SECRET}
+            JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION}
+            JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
             # Activation link base (inside Docker points to API Gateway service)
-            APP_URL_ACTIVATION: ${APP_URL_ACTIVATION:-http://api-gateway:8080}
+            APP_URL_ACTIVATION: ${APP_URL_ACTIVATION}
             # Mail settings
-            SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
-            SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
-            SPRING_MAIL_USERNAME: masterdarius2003@gmail.com
-            SPRING_MAIL_PASSWORD: mcxp yrqw qsuk zbax
-            SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:-true}
-            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:-true}
-            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED:-true}
+            SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+            SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+            SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+            SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED}
+            # OAuth2 (Google)
+            GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+            AUTHORIZED_REDIRECT_URIS: ${AUTHORIZED_REDIRECT_URIS}
+            DEFAULT_REDIRECT_URI: ${DEFAULT_REDIRECT_URI}
+            GOOGLE_OAUTH_SCOPES: ${GOOGLE_OAUTH_SCOPES:-email,profile}
         depends_on:
             auth-db:
                 condition: service_healthy
@@ -324,14 +343,17 @@ services:
             dockerfile: Dockerfile
         container_name: ja-user-service
         ports:
-            - "8085:8085"
+            - "${USER_SERVICE_PORT}:8085"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${USER_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${USER_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${USER_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${USER_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            SPRING_KAFKA_CONSUMER_GROUP: ${SPRING_KAFKA_CONSUMER_GROUP}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
         depends_on:
             user-db:
                 condition: service_healthy
@@ -348,14 +370,16 @@ services:
             dockerfile: Dockerfile
         container_name: ja-application-service
         ports:
-            - "8083:8083"
+            - "${APPLICATION_SERVICE_PORT}:8083"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://application-db:5432/application_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${APPLICATION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${APPLICATION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${APPLICATION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${APPLICATION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${APPLICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${APPLICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
         depends_on:
             application-db:
                 condition: service_healthy
@@ -370,15 +394,20 @@ services:
             dockerfile: Dockerfile
         container_name: ja-notification-service
         ports:
-            - "8086:8086"
+            - "${NOTIFICATION_SERVICE_PORT}:8086"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/notification_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-            SPRING_DATA_REDIS_HOST: redis
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${NOTIFICATION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${NOTIFICATION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${NOTIFICATION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            SPRING_KAFKA_CONSUMER_GROUP: ${SPRING_KAFKA_CONSUMER_GROUP}
+            SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
+            SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            APPLICATION_FRONTEND_URL: ${APPLICATION_FRONTEND_URL}
         depends_on:
             notification-db:
                 condition: service_healthy
@@ -397,13 +426,15 @@ services:
             dockerfile: Dockerfile
         container_name: ja-subscription-service
         ports:
-            - "8087:8087"
+            - "${SUBSCRIPTION_SERVICE_PORT}:8087"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://subscription-db:5432/subscription_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${SUBSCRIPTION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${SUBSCRIPTION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${SUBSCRIPTION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
         depends_on:
             subscription-db:
                 condition: service_healthy
@@ -418,13 +449,15 @@ services:
             dockerfile: Dockerfile
         container_name: ja-admin-service
         ports:
-            - "8088:8088"
+            - "${ADMIN_SERVICE_PORT}:8088"
         environment:
-            SPRING_PROFILES_ACTIVE: docker
-            SPRING_DATASOURCE_URL: jdbc:postgresql://admin-db:5432/admin_db
-            SPRING_DATASOURCE_USERNAME: postgres
-            SPRING_DATASOURCE_PASSWORD: postgres
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+            SPRING_APPLICATION_NAME: ${ADMIN_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${ADMIN_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${ADMIN_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${ADMIN_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${ADMIN_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${ADMIN_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
         depends_on:
             admin-db:
                 condition: service_healthy
