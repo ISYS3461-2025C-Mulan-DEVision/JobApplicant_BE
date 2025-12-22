@@ -67,7 +67,75 @@ docker-compose up -d # Run all infrastructure
 
 ---
 
-## 📦 Service Ports
+## � Docker Compose Startup Sequence
+
+When running `docker-compose up -d`, services start in this order based on dependencies:
+
+### Phase 1: Core Infrastructure (~30 seconds)
+```bash
+# These start first (no dependencies)
+1. All PostgreSQL Databases (user-db, auth-db, application-db, notification-db, subscription-db, admin-db)
+2. Zookeeper
+3. Redis
+4. Eureka Server
+```
+
+### Phase 2: Message Queue (~20 seconds)
+```bash
+# Waits for Zookeeper to be healthy
+5. Kafka (depends on: zookeeper)
+6. Kafka UI (depends on: kafka)
+7. Redis Commander (depends on: redis)
+```
+
+### Phase 3: Application Services (~60 seconds)
+```bash
+# Wait for databases, Kafka, and Eureka to be healthy
+8. API Gateway (depends on: eureka-server)
+9. Auth Service (depends on: auth-db, kafka, eureka-server)
+10. User Service (depends on: user-db, kafka, eureka-server)
+11. Application Service (depends on: application-db, eureka-server)
+12. Notification Service (depends on: notification-db, kafka, redis, eureka-server)
+13. Subscription Service (depends on: subscription-db, eureka-server)
+14. Admin Service (depends on: admin-db, eureka-server)
+```
+
+### Total Startup Time
+- **Infrastructure Only**: ~50 seconds
+- **All Services**: ~2 minutes
+
+### Recommended Startup Commands
+
+**For Development (Infrastructure Only):**
+```bash
+# Start infrastructure, let services run via Maven
+docker-compose up -d user-db auth-db application-db kafka redis eureka-server
+```
+
+**For Full Stack:**
+```bash
+# Build all services first
+mvn clean package -DskipTests
+
+# Start everything
+docker-compose up -d
+
+# Monitor startup progress
+docker-compose logs -f
+```
+
+**Check Startup Progress:**
+```bash
+# Watch all containers become healthy
+watch -n 2 'docker-compose ps'
+
+# Or on Windows PowerShell
+while ($true) { clear; docker-compose ps; Start-Sleep -Seconds 2 }
+```
+
+---
+
+## �📦 Service Ports
 
 ### Databases
 
