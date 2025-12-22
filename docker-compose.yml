@@ -1,8 +1,7 @@
-
 # ========================================
 # Job Applicant - Docker Compose
 # ========================================
-# 
+#
 # Usage:
 #   Start all:            docker-compose up -d
 #   Start infrastructure: docker-compose up -d user-db auth-db kafka redis eureka-server
@@ -16,236 +15,257 @@
 # ========================================
 
 services:
-  # ========================================
-  # Separate PostgreSQL Databases
-  # ========================================
-  
-  user-db:
-    image: postgres:16-alpine
-    container_name: ja-user-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: user_db
-    ports:
-      - "5433:5432"
-    volumes:
-      - user_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d user_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # ========================================
+    # Separate PostgreSQL Databases
+    # ========================================
 
-  auth-db:
-    image: postgres:16-alpine
-    container_name: ja-auth-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: auth_db
-    ports:
-      - "5434:5432"
-    volumes:
-      - auth_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    user-db:
+        image: postgres:16-alpine
+        container_name: ja-user-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: user_db
+        ports:
+            - "5433:5432"
+        volumes:
+            - user_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d user_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  application-db:
-    image: postgres:16-alpine
-    container_name: ja-application-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: application_db
-    ports:
-      - "5435:5432"
-    volumes:
-      - application_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d application_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    auth-db:
+        image: postgres:16-alpine
+        container_name: ja-auth-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: auth_db
+        ports:
+            - "5434:5432"
+        volumes:
+            - auth_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  notification-db:
-    image: postgres:16-alpine
-    container_name: ja-notification-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: notification_db
-    ports:
-      - "5436:5432"
-    volumes:
-      - notification_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    application-db:
+        image: postgres:16-alpine
+        container_name: ja-application-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: application_db
+        ports:
+            - "5435:5432"
+        volumes:
+            - application_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d application_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  subscription-db:
-    image: postgres:16-alpine
-    container_name: ja-subscription-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: subscription_db
-    ports:
-      - "5437:5432"
-    volumes:
-      - subscription_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d subscription_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    notification-db:
+        image: postgres:16-alpine
+        container_name: ja-notification-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: notification_db
+        ports:
+            - "5436:5432"
+        volumes:
+            - notification_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d notification_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  admin-db:
-    image: postgres:16-alpine
-    container_name: ja-admin-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: admin_db
-    ports:
-      - "5438:5432"
-    volumes:
-      - admin_db_data:/var/lib/postgresql/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d admin_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    subscription-db:
+        image: postgres:16-alpine
+        container_name: ja-subscription-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: subscription_db
+        ports:
+            - "5437:5432"
+        volumes:
+            - subscription_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d subscription_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  # ========================================
-  # Service Discovery (Eureka)
-  # ========================================
-  
-  eureka-server:
-    build:
-      context: ./services/eureka-server
-    image: ja-eureka-server
-    container_name: ja-eureka-server
-    ports:
-      - "8761:8761"
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8761/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+    admin-db:
+        image: postgres:16-alpine
+        container_name: ja-admin-db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: admin_db
+        ports:
+            - "5438:5432"
+        volumes:
+            - admin_db_data:/var/lib/postgresql/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d admin_db"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  # ========================================
-  # Kafka Infrastructure
-  # ========================================
-  
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: ja-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # ========================================
+    # Service Discovery (Eureka)
+    # ========================================
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: ja-kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+    eureka-server:
+        build:
+            context: ./services/eureka-server
+        image: ja-eureka-server
+        container_name: ja-eureka-server
+        ports:
+            - "${EUREKA_PORT}:8761"
+        environment:
+            SPRING_APPLICATION_NAME: ${EUREKA_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${EUREKA_SERVER_PORT}
+            EUREKA_CLIENT_REGISTER_WITH_EUREKA: ${EUREKA_CLIENT_REGISTER_WITH_EUREKA}
+            EUREKA_CLIENT_FETCH_REGISTRY: ${EUREKA_CLIENT_FETCH_REGISTRY}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE}
+            MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS}
+        networks:
+            - ja-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "wget",
+                    "-q",
+                    "--spider",
+                    "http://localhost:8761/actuator/health",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 5
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: ja-kafka-ui
-    depends_on:
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - ja-network
+    # ========================================
+    # Kafka Infrastructure
+    # ========================================
 
-  # ========================================
-  # Redis
-  # ========================================
-  
-  redis:
-    image: redis:7-alpine
-    container_name: ja-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    command: redis-server --appendonly yes
+    zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        container_name: ja-zookeeper
+        environment:
+            ZOOKEEPER_CLIENT_PORT: 2181
+            ZOOKEEPER_TICK_TIME: 2000
+        ports:
+            - "2181:2181"
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD", "nc", "-z", "localhost", "2181"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
 
-  redis-commander:
-    image: rediscommander/redis-commander:latest
-    container_name: ja-redis-commander
-    depends_on:
-      - redis
-    ports:
-      - "8091:8081"
-    environment:
-      REDIS_HOSTS: local:redis:6379
-    networks:
-      - ja-network
+    kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        container_name: ja-kafka
+        depends_on:
+            zookeeper:
+                condition: service_healthy
+        ports:
+            - "9092:9092"
+            - "29092:29092"
+        environment:
+            KAFKA_BROKER_ID: 1
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+            KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+            KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+            KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+            KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+            KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+            KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+            KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+        networks:
+            - ja-network
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "kafka-broker-api-versions",
+                    "--bootstrap-server",
+                    "localhost:9092",
+                ]
+            interval: 10s
+            timeout: 10s
+            retries: 5
+
+    kafka-ui:
+        image: provectuslabs/kafka-ui:latest
+        container_name: ja-kafka-ui
+        depends_on:
+            kafka:
+                condition: service_healthy
+        ports:
+            - "8090:8080"
+        environment:
+            KAFKA_CLUSTERS_0_NAME: local
+            KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+            KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+        networks:
+            - ja-network
+
+    # ========================================
+    # Redis
+    # ========================================
+
+    redis:
+        image: redis:7-alpine
+        container_name: ja-redis
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        networks:
+            - ja-network
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        command: redis-server --appendonly yes
+
+    redis-commander:
+        image: rediscommander/redis-commander:latest
+        container_name: ja-redis-commander
+        depends_on:
+            - redis
+        ports:
+            - "8091:8081"
+        environment:
+            REDIS_HOSTS: local:redis:6379
+        networks:
+            - ja-network
 
   # ========================================
   # Object Storage (SeaweedFS)
@@ -288,161 +308,208 @@ services:
         condition: service_healthy
     networks:
       - ja-network
+    # ========================================
+    # Application Services
+    # ========================================
 
-  auth-service:
-    build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
-    container_name: ja-auth-service
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/auth_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      JWT_SECRET: YourSuperSecretKeyForJWTTokenGenerationAndValidationMustBeAtLeast256BitsLong
-      JWT_EXPIRATION: 86400000
-      JWT_ACCESS_TOKEN_EXPIRATION: 3600000
-      JWT_REFRESH_TOKEN_EXPIRATION: 604800000
-    depends_on:
-      auth-db:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - ja-network
+    api-gateway:
+        build:
+            context: ./services/api-gateway
+            dockerfile: Dockerfile
+        container_name: ja-api-gateway
+        ports:
+            - "${API_GATEWAY_PORT}:8080"
+        environment:
+            SPRING_APPLICATION_NAME: ${API_GATEWAY_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${API_GATEWAY_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${API_GATEWAY_SPRING_PROFILES_ACTIVE}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            JWT_SECRET: ${JWT_SECRET}
+            SPRING_CLOUD_GATEWAY_CORS_ALLOWED_ORIGINS: ${SPRING_CLOUD_GATEWAY_CORS_ALLOWED_ORIGINS}
+        depends_on:
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
-  user-service:
-    build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
-    container_name: ja-user-service
-    ports:
-      - "8085:8085"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      user-db:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - ja-network
+    auth-service:
+        build:
+            context: ./services/auth-service
+            dockerfile: Dockerfile
+        container_name: ja-auth-service
+        ports:
+            - "${AUTH_SERVICE_PORT}:8081"
+        environment:
+            SPRING_APPLICATION_NAME: ${AUTH_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${AUTH_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${AUTH_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${AUTH_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${AUTH_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${AUTH_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            # JWT configuration
+            JWT_SECRET: ${JWT_SECRET}
+            JWT_ACCESS_TOKEN_EXPIRATION: ${JWT_ACCESS_TOKEN_EXPIRATION}
+            JWT_REFRESH_TOKEN_EXPIRATION: ${JWT_REFRESH_TOKEN_EXPIRATION}
+            # Activation link base (inside Docker points to API Gateway service)
+            APP_URL_ACTIVATION: ${APP_URL_ACTIVATION}
+            # Mail settings
+            SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+            SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+            SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+            SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE}
+            SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_REQUIRED}
+            # OAuth2 (Google)
+            GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+            AUTHORIZED_REDIRECT_URIS: ${AUTHORIZED_REDIRECT_URIS}
+            DEFAULT_REDIRECT_URI: ${DEFAULT_REDIRECT_URI}
+            GOOGLE_OAUTH_SCOPES: ${GOOGLE_OAUTH_SCOPES:-email,profile}
+        depends_on:
+            auth-db:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
-  application-service:
-    build:
-      context: ./services/application-service
-      dockerfile: Dockerfile
-    container_name: ja-application-service
-    ports:
-      - "8083:8083"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://application-db:5432/application_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-      # SeaweedFS S3 Configuration
-      AWS_S3_ACCESS_KEY: ""
-      AWS_S3_SECRET_KEY: ""
-      AWS_S3_REGION: us-east-1
-      AWS_S3_BUCKET_NAME: job-applicant-bucket
-      AWS_S3_ENDPOINT: http://seaweedfs:8333
-    depends_on:
-      application-db:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-      seaweedfs:
-        condition: service_started
-    networks:
-      - ja-network
+    user-service:
+        build:
+            context: ./services/user-service
+            dockerfile: Dockerfile
+        container_name: ja-user-service
+        ports:
+            - "${USER_SERVICE_PORT}:8085"
+        environment:
+            SPRING_APPLICATION_NAME: ${USER_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${USER_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${USER_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${USER_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            SPRING_KAFKA_CONSUMER_GROUP: ${SPRING_KAFKA_CONSUMER_GROUP}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        depends_on:
+            user-db:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
-  notification-service:
-    build:
-      context: ./services/notification-service
-      dockerfile: Dockerfile
-    container_name: ja-notification-service
-    ports:
-      - "8086:8086"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/notification_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SPRING_DATA_REDIS_HOST: redis
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      notification-db:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - ja-network
+    application-service:
+        build:
+            context: ./services/application-service
+            dockerfile: Dockerfile
+        container_name: ja-application-service
+        ports:
+            - "${APPLICATION_SERVICE_PORT}:8083"
+        environment:
+            SPRING_APPLICATION_NAME: ${APPLICATION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${APPLICATION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${APPLICATION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${APPLICATION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${APPLICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${APPLICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        depends_on:
+            application-db:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
-  subscription-service:
-    build:
-      context: ./services/subscription-service
-      dockerfile: Dockerfile
-    container_name: ja-subscription-service
-    ports:
-      - "8087:8087"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://subscription-db:5432/subscription_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      subscription-db:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - ja-network
+    notification-service:
+        build:
+            context: ./services/notification-service
+            dockerfile: Dockerfile
+        container_name: ja-notification-service
+        ports:
+            - "${NOTIFICATION_SERVICE_PORT}:8086"
+        environment:
+            SPRING_APPLICATION_NAME: ${NOTIFICATION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${NOTIFICATION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${NOTIFICATION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+            SPRING_KAFKA_CONSUMER_GROUP: ${SPRING_KAFKA_CONSUMER_GROUP}
+            SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
+            SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+            APPLICATION_FRONTEND_URL: ${APPLICATION_FRONTEND_URL}
+        depends_on:
+            notification-db:
+                condition: service_healthy
+            kafka:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
-  admin-service:
-    build:
-      context: ./services/admin-service
-      dockerfile: Dockerfile
-    container_name: ja-admin-service
-    ports:
-      - "8088:8088"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://admin-db:5432/admin_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
-    depends_on:
-      admin-db:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - ja-network
+    subscription-service:
+        build:
+            context: ./services/subscription-service
+            dockerfile: Dockerfile
+        container_name: ja-subscription-service
+        ports:
+            - "${SUBSCRIPTION_SERVICE_PORT}:8087"
+        environment:
+            SPRING_APPLICATION_NAME: ${SUBSCRIPTION_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${SUBSCRIPTION_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${SUBSCRIPTION_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        depends_on:
+            subscription-db:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
+
+    admin-service:
+        build:
+            context: ./services/admin-service
+            dockerfile: Dockerfile
+        container_name: ja-admin-service
+        ports:
+            - "${ADMIN_SERVICE_PORT}:8088"
+        environment:
+            SPRING_APPLICATION_NAME: ${ADMIN_SERVICE_SPRING_APPLICATION_NAME}
+            SERVER_PORT: ${ADMIN_SERVICE_SERVER_PORT}
+            SPRING_PROFILES_ACTIVE: ${ADMIN_SERVICE_SPRING_PROFILES_ACTIVE}
+            SPRING_DATASOURCE_URL: ${ADMIN_SERVICE_SPRING_DATASOURCE_URL}
+            SPRING_DATASOURCE_USERNAME: ${ADMIN_SERVICE_SPRING_DATASOURCE_USERNAME}
+            SPRING_DATASOURCE_PASSWORD: ${ADMIN_SERVICE_SPRING_DATASOURCE_PASSWORD}
+            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        depends_on:
+            admin-db:
+                condition: service_healthy
+            eureka-server:
+                condition: service_healthy
+        networks:
+            - ja-network
 
 networks:
-  ja-network:
-    driver: bridge
+    ja-network:
+        driver: bridge
 
 volumes:
   user_db_data:
