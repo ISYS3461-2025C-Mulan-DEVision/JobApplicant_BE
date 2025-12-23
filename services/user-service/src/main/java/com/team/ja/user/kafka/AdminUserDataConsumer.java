@@ -1,6 +1,7 @@
 package com.team.ja.user.kafka;
 
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -11,10 +12,8 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.team.ja.common.dto.SkillResponse;
 import com.team.ja.common.dto.UserResponse;
 import com.team.ja.common.event.KafkaTopics;
-import com.team.ja.user.service.SkillService;
 import com.team.ja.user.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,10 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KafkaUserConsume {
+public class AdminUserDataConsumer {
 
         private final UserService userService;
-        private final SkillService skillService;
         private final ObjectMapper objectMapper;
 
         @KafkaListener(topics = KafkaTopics.ADMIN_REQUEST_USER_DATA, groupId = "${spring.kafka.consumer.group-id}")
@@ -45,17 +43,15 @@ public class KafkaUserConsume {
 
         }
 
-        @KafkaListener(topics = KafkaTopics.ADMIN_REQUEST_SKILL_DATA, groupId = "${spring.kafka.consumer.group-id}")
+        @KafkaListener(topics = KafkaTopics.ADMIN_DEACTIVATE_USER, groupId = "${spring.kafka.consumer.group-id}")
         @SendTo
-        public Message<List<SkillResponse>> handleSkillDataRequest(String message,
+        public Message<String> handleDeleteUserRequest(UUID userId,
                         @Header(KafkaHeaders.CORRELATION_ID) byte[] correlationId) throws Exception {
-                log.info("Received skill data request: {}", message);
-                List<SkillResponse> skills = objectMapper.convertValue(
-                                skillService.getAllSkills(),
-                                objectMapper.getTypeFactory().constructCollectionType(List.class, SkillResponse.class));
+                log.info("Received delete user request for userId: {}", userId);
+                userService.deactivateUser(userId);
 
-                log.info("Sending skill data response with {} skills", skills.size());
-                return MessageBuilder.withPayload(skills)
+                log.info("Sending delete user response for userId: {}", userId);
+                return MessageBuilder.withPayload("User deactivated successfully.")
                                 .setHeader(KafkaHeaders.CORRELATION_ID, correlationId)
                                 .build();
 

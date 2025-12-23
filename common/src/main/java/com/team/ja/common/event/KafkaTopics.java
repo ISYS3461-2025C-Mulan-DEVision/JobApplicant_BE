@@ -53,9 +53,24 @@ public final class KafkaTopics {
     public static final String ADMIN_REPLY_USER_DATA = "admin-reply-user-data";
 
     /**
+     * Topic for admin delete user request
+     * Producer: admin-service
+     * Consumer: user-service
+     */
+    public static final String ADMIN_DEACTIVATE_USER = "admin-deactivate-user";
+
+    /**
+     * Topic for delete user response to admin
+     * Producer: user-service
+     * Consumer: admin-service
+     */
+    public static final String ADMIN_REPLY_DEACTIVATE_USER = "admin-reply-deactivate-user";
+
+    /**
      * Topic for admin request skill data
      * Producer: admin-service
      * Consumer: user-service
+     * 
      */
     public static final String ADMIN_REQUEST_SKILL_DATA = "admin-request-skill-data";
     /**
@@ -64,4 +79,18 @@ public final class KafkaTopics {
      * Consumer: admin-service
      */
     public static final String ADMIN_REPLY_SKILL_DATA = "admin-reply-skill-data";
+
+    /**
+     * Topic for admin create skill request
+     * Producer: admin-service
+     * Consumer: user-service
+     */
+    public static final String ADMIN_CREATE_SKILL = "admin-create-skill";
+
+    /**
+     * Topic for create skill response to admin
+     * Producer: user-service
+     * Consumer: admin-service
+     */
+    public static final String ADMIN_REPLY_CREATE_SKILL = "admin-reply-create-skill";
 }

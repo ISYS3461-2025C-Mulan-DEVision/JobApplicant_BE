@@ -73,10 +73,20 @@ public class KafkaConfig {
         return template;
     }
 
+    /**
+     * Container to listen for replies
+     * REMARK: Make sure the topics here match the reply topics used in the requests
+     * 
+     * @param cf
+     * @return
+     */
     @Bean
     public KafkaMessageListenerContainer<String, Object> replyContainer(ConsumerFactory<String, Object> cf) {
-        ContainerProperties containerProperties = new ContainerProperties(KafkaTopics.ADMIN_REPLY_USER_DATA,
-                KafkaTopics.ADMIN_REPLY_SKILL_DATA);
+        ContainerProperties containerProperties = new ContainerProperties(
+                KafkaTopics.ADMIN_REPLY_USER_DATA,
+                KafkaTopics.ADMIN_REPLY_SKILL_DATA,
+                KafkaTopics.ADMIN_REPLY_DEACTIVATE_USER,
+                KafkaTopics.ADMIN_REPLY_CREATE_SKILL);
         return new KafkaMessageListenerContainer<>(cf, containerProperties);
     }
 }

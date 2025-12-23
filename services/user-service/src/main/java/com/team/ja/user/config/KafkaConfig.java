@@ -10,7 +10,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -36,8 +35,11 @@ public class KafkaConfig {
         return mapper;
     }
 
-    // 1. Define the ProducerFactory (Renamed to 'producerFactory' for auto-config
-    // compatibility)
+    /**
+     * Bean for ProducerFactory
+     * 
+     * @return
+     */
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -47,13 +49,19 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(config, new StringSerializer(), new JsonSerializer<>(objectMapper()));
     }
 
-    // 2. Explicitly define the KafkaTemplate
+    /**
+     * Bean for KafkaTemplate
+     * 
+     * @return
+     */
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
-    // 3. Define the ConsumerFactory
+    /**
+     * Bean for ConsumerFactory
+     */
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
         Map<String, Object> config = new HashMap<>();
@@ -70,7 +78,11 @@ public class KafkaConfig {
                 new ErrorHandlingDeserializer<>(jsonDeserializer));
     }
 
-    // 4. Configure the Listener Factory to use the Template for @SendTo
+    /**
+     * Bean for KafkaListenerContainerFactory
+     * 
+     * @return
+     */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
