@@ -9,12 +9,23 @@ import com.team.ja.auth.dto.response.AuthResponse;
  * Authentication service interface.
  */
 public interface AuthService {
-
     /**
      * Register a new user.
-     * Creates auth credentials and user profile.
+     * Creates auth credentials and sends activation email.
      */
-    AuthResponse register(RegisterRequest request);
+    void register(RegisterRequest request);
+
+    /**
+     * Activate a user account using a verification token.
+     */
+    AuthResponse activateAccount(String token);
+
+    /**
+     * Resend activation email if the account is inactive or previous token expired.
+     *
+     * @param email the registered email address
+     */
+    void resendActivationEmail(String email);
 
     /**
      * Authenticate user and return tokens.
@@ -31,4 +42,3 @@ public interface AuthService {
      */
     boolean validateToken(String token);
 }
-
