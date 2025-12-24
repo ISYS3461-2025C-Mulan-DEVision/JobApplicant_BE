@@ -359,58 +359,72 @@ services:
         networks:
             - ja-network
 
-
     user-service:
-        build:
-            context: ./services/user-service
-            dockerfile: Dockerfile
-        container_name: ja-user-service
-        ports:
-            - "${USER_SERVICE_PORT}:8085"
-        environment:
-            SPRING_APPLICATION_NAME: ${USER_SERVICE_SPRING_APPLICATION_NAME}
-            SERVER_PORT: ${USER_SERVICE_SERVER_PORT}
-            SPRING_PROFILES_ACTIVE: ${USER_SERVICE_SPRING_PROFILES_ACTIVE}
-            SPRING_DATASOURCE_URL: ${USER_SERVICE_SPRING_DATASOURCE_URL}
-            SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_SPRING_DATASOURCE_USERNAME}
-            SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_SPRING_DATASOURCE_PASSWORD}
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-            SPRING_KAFKA_CONSUMER_GROUP: ${USER_SERVICE_KAFKA_CONSUMER_GROUP}
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
-        depends_on:
-            user-db:
-                condition: service_healthy
-            kafka:
-                condition: service_healthy
-            eureka-server:
-                condition: service_healthy
-        networks:
-            - ja-network
+      build:
+        context: ./services/user-service
+        dockerfile: Dockerfile
+      container_name: ja-user-service
+      ports:
+        - "${USER_SERVICE_PORT}:8085"
+      environment:
+        SPRING_APPLICATION_NAME: ${USER_SERVICE_SPRING_APPLICATION_NAME}
+        SERVER_PORT: ${USER_SERVICE_SERVER_PORT}
+        SPRING_PROFILES_ACTIVE: ${USER_SERVICE_SPRING_PROFILES_ACTIVE}
+        SPRING_DATASOURCE_URL: ${USER_SERVICE_SPRING_DATASOURCE_URL}
+        SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_SPRING_DATASOURCE_USERNAME}
+        SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_SPRING_DATASOURCE_PASSWORD}
+        SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+        SPRING_KAFKA_CONSUMER_GROUP: ${USER_SERVICE_KAFKA_CONSUMER_GROUP}
+        EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        # S3 Storage
+        AWS_S3_ENABLED: ${AWS_S3_ENABLED}
+        AWS_S3_BUCKET_NAME: ${USER_SERVICE_S3_BUCKET_NAME}
+        AWS_S3_REGION: ${AWS_S3_REGION}
+        AWS_S3_ACCESS_KEY: ${AWS_S3_ACCESS_KEY}
+        AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY}
+        AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+      depends_on:
+        user-db:
+          condition: service_healthy
+        kafka:
+          condition: service_healthy
+        eureka-server:
+          condition: service_healthy
+      networks:
+        - ja-network
 
     application-service:
-        build:
-            context: ./services/application-service
-            dockerfile: Dockerfile
-        container_name: ja-application-service
-        ports:
-            - "${APPLICATION_SERVICE_PORT}:8083"
-        environment:
-            SPRING_APPLICATION_NAME: ${APPLICATION_SERVICE_SPRING_APPLICATION_NAME}
-            SERVER_PORT: ${APPLICATION_SERVICE_SERVER_PORT}
-            SPRING_PROFILES_ACTIVE: ${APPLICATION_SERVICE_SPRING_PROFILES_ACTIVE}
-            SPRING_DATASOURCE_URL: ${APPLICATION_SERVICE_SPRING_DATASOURCE_URL}
-            SPRING_DATASOURCE_USERNAME: ${APPLICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
-            SPRING_DATASOURCE_PASSWORD: ${APPLICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-            SPRING_KAFKA_CONSUMER_GROUP: ${APPLICATION_SERVICE_KAFKA_CONSUMER_GROUP}
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
-        depends_on:
-            application-db:
-                condition: service_healthy
-            eureka-server:
-                condition: service_healthy
-        networks:
-            - ja-network
+      build:
+        context: ./services/application-service
+        dockerfile: Dockerfile
+      container_name: ja-application-service
+      ports:
+        - "${APPLICATION_SERVICE_PORT}:8083"
+      environment:
+        SPRING_APPLICATION_NAME: ${APPLICATION_SERVICE_SPRING_APPLICATION_NAME}
+        SERVER_PORT: ${APPLICATION_SERVICE_SERVER_PORT}
+        SPRING_PROFILES_ACTIVE: ${APPLICATION_SERVICE_SPRING_PROFILES_ACTIVE}
+        SPRING_DATASOURCE_URL: ${APPLICATION_SERVICE_SPRING_DATASOURCE_URL}
+        SPRING_DATASOURCE_USERNAME: ${APPLICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
+        SPRING_DATASOURCE_PASSWORD: ${APPLICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+        SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+        SPRING_KAFKA_CONSUMER_GROUP: ${APPLICATION_SERVICE_KAFKA_CONSUMER_GROUP}
+        EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+        # S3 Storage
+        AWS_S3_ENABLED: ${AWS_S3_ENABLED}
+        AWS_S3_BUCKET_NAME: ${APPLICATION_SERVICE_S3_BUCKET_NAME}
+        AWS_S3_REGION: ${AWS_S3_REGION}
+        AWS_S3_ACCESS_KEY: ${AWS_S3_ACCESS_KEY}
+        AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY}
+        AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+      depends_on:
+        application-db:
+          condition: service_healthy
+        eureka-server:
+          condition: service_healthy
+      networks:
+        - ja-network
+
 
     notification-service:
         build:
