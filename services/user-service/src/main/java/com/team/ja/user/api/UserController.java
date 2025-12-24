@@ -82,7 +82,9 @@ public class UserController {
     @GetMapping("/{id}/profile")
     @Operation(summary = "Get user profile", description = "Retrieve complete user profile with education, experience, and skills")
     public ApiResponse<UserProfileResponse> getUserProfile(
-            @Parameter(description = "User ID") @PathVariable UUID id) {
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(id, authUserId);
         return ApiResponse.success(userService.getUserProfile(id));
     }
 
@@ -90,7 +92,9 @@ public class UserController {
     @Operation(summary = "Update user", description = "Update user profile (User can only update own profile)")
     public ApiResponse<UserResponse> updateUser(
             @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
             @Valid @RequestBody UpdateUserRequest request) {
+        authorize(id, authUserId);
         return ApiResponse.success("User updated successfully", userService.updateUser(id, request));
     }
 
@@ -101,12 +105,7 @@ public class UserController {
             @Parameter(description = "Authenticated User ID from JWT") @RequestHeader("X-User-Id") String authUserIdStr,
             @Parameter(description = "Avatar image file") @RequestParam("file") MultipartFile file) {
         
-        UUID authUserId = UUID.fromString(authUserIdStr);
-        // Security check: user can only upload their own avatar
-        if (!id.equals(authUserId)) {
-            throw new ForbiddenException("You are not authorized to update this user's avatar.");
-        }
-
+        authorize(id, authUserIdStr);
         UserResponse response = userService.uploadAvatar(id, file);
         return ApiResponse.success("Avatar uploaded successfully", response);
     }
@@ -115,7 +114,9 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Deactivate user", description = "Soft delete user account (User can only deactivate own account)")
     public ApiResponse<Void> deactivateUser(
-            @Parameter(description = "User ID") @PathVariable UUID id) {
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(id, authUserId);
         userService.deactivateUser(id);
         return ApiResponse.success("User deactivated successfully", null);
     }
@@ -132,5 +133,12 @@ public class UserController {
     public ApiResponse<Boolean> existsByEmail(
             @Parameter(description = "Email to check") @RequestParam String email) {
         return ApiResponse.success(userService.existsByEmail(email));
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 }
