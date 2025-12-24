@@ -39,6 +39,14 @@ public interface UserService {
     UserResponse updateUser(UUID userId, UpdateUserRequest request);
 
     /**
+     * Upload and update user avatar.
+     * @param userId User ID
+     * @param file Image file for the avatar
+     * @return Updated user response
+     */
+    UserResponse uploadAvatar(UUID userId, org.springframework.web.multipart.MultipartFile file);
+
+    /**
      * Get user by ID.
      * 
      * @param id User ID

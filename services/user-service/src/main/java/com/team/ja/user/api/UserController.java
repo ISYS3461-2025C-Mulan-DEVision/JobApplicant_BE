@@ -1,6 +1,7 @@
 package com.team.ja.user.api;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.UserProfileResponse;
@@ -12,7 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -89,6 +92,23 @@ public class UserController {
             @Parameter(description = "User ID") @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
         return ApiResponse.success("User updated successfully", userService.updateUser(id, request));
+    }
+
+    @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload avatar", description = "Upload or update a user's avatar")
+    public ApiResponse<UserResponse> uploadAvatar(
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID from JWT") @RequestHeader("X-User-Id") String authUserIdStr,
+            @Parameter(description = "Avatar image file") @RequestParam("file") MultipartFile file) {
+        
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        // Security check: user can only upload their own avatar
+        if (!id.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to update this user's avatar.");
+        }
+
+        UserResponse response = userService.uploadAvatar(id, file);
+        return ApiResponse.success("Avatar uploaded successfully", response);
     }
 
     @DeleteMapping("/{id}")

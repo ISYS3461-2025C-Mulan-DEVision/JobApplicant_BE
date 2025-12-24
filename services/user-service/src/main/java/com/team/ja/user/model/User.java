@@ -48,6 +48,9 @@ public class User extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String objectiveSummary;
 
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean isPremium = false;
