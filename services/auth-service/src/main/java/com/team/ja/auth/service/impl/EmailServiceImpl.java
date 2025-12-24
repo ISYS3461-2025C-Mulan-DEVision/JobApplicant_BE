@@ -34,10 +34,23 @@ public class EmailServiceImpl implements EmailService {
             message.setTo(credential.getEmail());
             message.setSubject("Activate your JobApplicant account");
 
-            String activationLink =
-                activationBaseUrl +
-                "/api/v1/auth/activate?token=" +
-                activationToken;
+            // Build activation link expecting activationBaseUrl to be just the origin (e.g., https://be.serverhub.id.vn)
+            // Safeguard against misconfigured values that already include the path.
+            String base = activationBaseUrl != null
+                ? activationBaseUrl.trim()
+                : "";
+            // Remove trailing slash for consistency
+            if (base.endsWith("/")) {
+                base = base.substring(0, base.length() - 1);
+            }
+            String path = "/api/v1/auth/activate";
+            if (base.endsWith(path)) {
+                // Base already contains the activation path
+                base = base; // no-op
+            } else {
+                base = base + path;
+            }
+            String activationLink = base + "?token=" + activationToken;
             String emailContent = String.format(
                 "Hi %s,\n\n" +
                     "Welcome to JobApplicant!\n\n" +
