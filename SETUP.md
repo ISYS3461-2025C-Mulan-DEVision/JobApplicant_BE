@@ -814,3 +814,11 @@ docker-compose up -d
 ---
 
 **Happy Coding! 🚀**
+
+## 📁 S3 Bucket Structure
+application-service-bucket/
+  └── resumes/{userId}/{applicationId}/{filename}
+  └── cover-letters/{userId}/{applicationId}/{filename}
+
+user-service-bucket/
+  └── avatars/{userId}/{filename}
