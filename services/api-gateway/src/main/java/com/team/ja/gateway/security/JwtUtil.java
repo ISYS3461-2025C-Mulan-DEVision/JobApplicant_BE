@@ -2,6 +2,7 @@ package com.team.ja.gateway.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwe;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
@@ -12,31 +13,32 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 /**
  * JWT Utility for validating tokens in API Gateway.
+ * Handles nested JWS-then-JWE tokens.
  */
 @Slf4j
 @Component
 public class JwtUtil {
 
     @Value("${jwt.secret}")
-    private String secretKey;
+    private String signSecretKey;
 
-    /**
-     * Validate the JWT token.
-     * 
-     * @param token The JWT token
-     * @return true if valid, false otherwise
-     */
-    public boolean validateToken(String token) {
+    @Value("${jwe.secret}")
+    private String jweSecretKey;
+
+    public boolean validateToken(String jweString) {
         try {
+            String jwsString = decryptJwe(jweString);
             Jwts.parser()
                     .verifyWith(getSigningKey())
-                    .setAllowedClockSkewSeconds(300) // Allow for 5 minutes of clock skew
+                    .setAllowedClockSkewSeconds(300) // 5 min clock skew
                     .build()
-                    .parseSignedClaims(token);
+                    .parseSignedClaims(jwsString);
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("JWT token is expired: {}", e.getMessage());
@@ -52,64 +54,61 @@ public class JwtUtil {
         return false;
     }
 
-    /**
-     * Extract all claims from the token.
-     */
-    public Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String jweString) {
+        String jwsString = decryptJwe(jweString);
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
+                .parseSignedClaims(jwsString)
                 .getPayload();
     }
 
-    /**
-     * Extract user ID from token.
-     */
-    public String extractUserId(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("userId", String.class);
+    public String extractUserId(String jweString) {
+        return extractAllClaims(jweString).get("userId", String.class);
     }
 
-    /**
-     * Extract username (email) from token.
-     */
-    public String extractUsername(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.getSubject();
+    public String extractUsername(String jweString) {
+        return extractAllClaims(jweString).getSubject();
     }
 
-    /**
-     * Extract role from token.
-     */
-    public String extractRole(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.get("role", String.class);
+    public String extractRole(String jweString) {
+        return extractAllClaims(jweString).get("role", String.class);
     }
 
-    /**
-     * Extract JTI (JWT ID) from token.
-     */
-    public String extractJti(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.getId();
+    public String extractJti(String jweString) {
+        return extractAllClaims(jweString).getId();
     }
 
-    /**
-     * Check if token is expired.
-     */
-    public boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String jweString) {
         try {
-            Claims claims = extractAllClaims(token);
-            return claims.getExpiration().before(new Date());
+            return extractAllClaims(jweString).getExpiration().before(new Date());
         } catch (Exception e) {
             return true;
         }
     }
 
+    private String decryptJwe(String jweString) {
+        try {
+            Jwe<byte[]> jwe = Jwts.parser()
+                    .decryptWith(getEncryptionKey())
+                    .build()
+                    .parseEncryptedContent(jweString);
+            return new String(jwe.getPayload(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.error("JWE decryption failed: {}", e.getMessage());
+            throw new MalformedJwtException("Unable to decrypt JWE", e);
+        }
+    }
+
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = Decoders.BASE64.decode(signSecretKey);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    private SecretKey getEncryptionKey() {
+        byte[] keyBytes = Decoders.BASE64.decode(jweSecretKey);
+        return new SecretKeySpec(keyBytes, "AES");
+    }
 }
+
 
