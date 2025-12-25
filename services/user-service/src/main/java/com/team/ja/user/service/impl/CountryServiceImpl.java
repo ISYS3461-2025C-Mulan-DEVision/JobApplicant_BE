@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import com.team.ja.user.model.Country;
 
 /**
  * Implementation of CountryService.
@@ -26,7 +27,8 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public List<CountryResponse> getAllCountries() {
         log.info("Fetching all active countries");
-        return countryMapper.toResponseList(
-                countryRepository.findByIsActiveTrueOrderByNameAsc());
+        List<Country> countries = countryRepository.findByIsActiveTrueOrderByNameAsc();
+        log.debug("Found {} active countries from repository.", countries.size());
+        return countryMapper.toResponseList(countries);
     }
 }

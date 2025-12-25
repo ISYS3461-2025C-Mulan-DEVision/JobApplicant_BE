@@ -53,6 +53,20 @@ public class JwtService {
     }
 
     /**
+     * Extract JTI (JWT ID) from token.
+     */
+    public String extractJti(String token) {
+        return extractClaim(token, Claims::getId);
+    }
+
+    /**
+     * Extract expiration date from token.
+     */
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    /**
      * Extract specific claim from token.
      */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -91,7 +105,7 @@ public class JwtService {
     /**
      * Check if token is expired.
      */
-    public boolean isTokenExpired(String token) {
+    private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -103,16 +117,13 @@ public class JwtService {
         return "refresh".equals(type);
     }
 
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
+                .id(UUID.randomUUID().toString()) // Add JTI
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -124,7 +135,7 @@ public class JwtService {
                 .parseSignedClaims(token)
                 .getPayload();
     }
-
+    
     private SecretKey getSigningKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);

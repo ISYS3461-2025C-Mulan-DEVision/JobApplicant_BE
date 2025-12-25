@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS verification_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     token VARCHAR(255) NOT NULL UNIQUE,
     credential_id UUID NOT NULL REFERENCES credentials(id) ON DELETE CASCADE,
+    first_name VARCHAR(255) NULL,
+    last_name VARCHAR(255) NULL,
     expiry_date TIMESTAMP NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     deactivated_at TIMESTAMP,

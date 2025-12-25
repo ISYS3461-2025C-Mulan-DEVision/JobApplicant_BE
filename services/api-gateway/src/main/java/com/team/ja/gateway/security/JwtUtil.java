@@ -34,6 +34,7 @@ public class JwtUtil {
         try {
             Jwts.parser()
                     .verifyWith(getSigningKey())
+                    .setAllowedClockSkewSeconds(300) // Allow for 5 minutes of clock skew
                     .build()
                     .parseSignedClaims(token);
             return true;
@@ -84,6 +85,14 @@ public class JwtUtil {
     public String extractRole(String token) {
         Claims claims = extractAllClaims(token);
         return claims.get("role", String.class);
+    }
+
+    /**
+     * Extract JTI (JWT ID) from token.
+     */
+    public String extractJti(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.getId();
     }
 
     /**

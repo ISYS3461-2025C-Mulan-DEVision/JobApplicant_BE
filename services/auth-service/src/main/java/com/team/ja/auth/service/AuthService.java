@@ -41,4 +41,10 @@ public interface AuthService {
      * Validate if token is valid.
      */
     boolean validateToken(String token);
+
+    /**
+     * Logs out the user by blacklisting the provided token.
+     * @param token The JWT token from the Authorization header.
+     */
+    void logout(String token);
 }

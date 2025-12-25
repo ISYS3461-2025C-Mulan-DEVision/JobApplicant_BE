@@ -96,12 +96,6 @@
             <optional>true</optional>
         </dependency>
         
-        <!-- Environment variables support -->
-        <dependency>
-            <groupId>me.paulschwarz</groupId>
-            <artifactId>spring-dotenv</artifactId>
-        </dependency>
-        
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
