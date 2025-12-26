@@ -80,6 +80,16 @@ public interface UserService {
     List<UserResponse> getAllUsers();
 
     /**
+     * Search for users based on criteria.
+     * 
+     * @param skills Comma-separated list of skills
+     * @param country Country code
+     * @param keyword General keyword for search
+     * @return List of matching users
+     */
+    List<UserResponse> searchUsers(String skills, String country, String keyword);
+
+    /**
      * Deactivate (soft delete) a user.
      * Auth: Admin or user themselves.
      * 

@@ -65,6 +65,17 @@ public class UserController {
         return ApiResponse.success("Users retrieved successfully", userService.getAllUsers());
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Search for users", description = "Search for users based on various criteria")
+    public ApiResponse<List<UserResponse>> searchUsers(
+            @RequestParam(required = false) String skills,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String keyword) {
+        // This will be implemented in the next steps.
+        // For now, it will call a non-existent method to follow the plan.
+        return ApiResponse.success("Users retrieved successfully", userService.searchUsers(skills, country, keyword));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieve a user by their ID")
     public ApiResponse<UserResponse> getUserById(
