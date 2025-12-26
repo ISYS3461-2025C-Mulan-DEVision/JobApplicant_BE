@@ -1,8 +1,11 @@
 package com.team.ja.user.model;
 
 import com.team.ja.common.entity.BaseEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +15,8 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -61,8 +66,13 @@ public class User extends BaseEntity {
     /**
      * Full-text search vector for efficient searching.
      */
-    @Column(columnDefinition = "TEXT")
-    private String searchVector;
+    @Column(name = "fts_document", columnDefinition = "TSVECTOR")
+    private String ftsDocument; // Correct field for TSVECTOR type
+    // ... rest of the file
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<UserSkill> userSkills = new HashSet<>();
 
     /**
      * Get user's full name.

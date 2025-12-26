@@ -29,10 +29,12 @@ import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
 import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
+import com.team.ja.user.repository.specification.UserSpecification;
 import com.team.ja.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,6 +43,8 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -231,6 +235,37 @@ public class UserServiceImpl implements UserService {
         log.info("Fetching all active users");
         return userRepository.findAll().stream()
                 .filter(User::isActive)
+                .map(this::mapUserWithCountry)
+                .toList();
+    }
+
+    @Override
+    public List<UserResponse> searchUsers(String skills, String country, String keyword) {
+        log.info("Searching for users with skills [{}], country [{}], and keyword [{}]", skills, country, keyword);
+
+        if (keyword != null && !keyword.isEmpty()) {
+            // If a keyword is provided, prioritize FTS and return results directly.
+            // Note: This simplified approach does not combine FTS with other filters yet.
+            return userRepository.findByFts(keyword).stream()
+                    .map(this::mapUserWithCountry)
+                    .toList();
+        }
+
+        List<String> skillList = (skills != null && !skills.isEmpty())
+                ? Arrays.asList(skills.split(","))
+                : Collections.emptyList();
+        
+        UUID countryFilterId = null;
+        if (country != null && !country.isEmpty()) {
+            countryFilterId = countryRepository.findByAbbreviation(country)
+                    .map(com.team.ja.user.model.Country::getId)
+                    .orElse(null);
+        }
+
+        Specification<User> spec = Specification.where(UserSpecification.hasSkills(skillList))
+                .and(UserSpecification.hasCountry(countryFilterId));
+
+        return userRepository.findAll(spec).stream()
                 .map(this::mapUserWithCountry)
                 .toList();
     }
