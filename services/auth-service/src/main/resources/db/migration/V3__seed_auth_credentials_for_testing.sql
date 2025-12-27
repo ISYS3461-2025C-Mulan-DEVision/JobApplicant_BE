@@ -1,13 +1,13 @@
 -- V3__seed_auth_credentials_for_testing.sql
 -- This script seeds the credentials table with test users.
--- It is designed to be run after the user-service has seeded the corresponding user profiles.
+-- It uses hardcoded UUIDs to ensure consistency with the user-service seed data.
 
 INSERT INTO credentials (id, user_id, email, password_hash, role, auth_provider, is_active, email_verified, created_at, updated_at) VALUES
 (
-    gen_random_uuid(),
-    'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', -- Corresponds to phan.nguyen@example.com in user-service
+    'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1', -- Consistent UUID for phan.nguyen@example.com
+    'a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1',
     'phan.nguyen@example.com',
-    '$2a$04$4gaE9mrolh0DpHgFkjEzIeO8kfvu5WZcaGqVqR5XTY0EcQw7gjmDu', -- Bcrypt for "Password123!"
+    '$2a$04$4gaE9mrolh0DpHgFkjEzIeO8kfvu5WZcaGqVqR5XTY0EcQw7gjmDu', -- Correct Bcrypt hash for "Password123!" as per previous successful login
     'FREE',
     'LOCAL',
     TRUE,
@@ -16,10 +16,10 @@ INSERT INTO credentials (id, user_id, email, password_hash, role, auth_provider,
     CURRENT_TIMESTAMP
 ),
 (
-    gen_random_uuid(),
-    'b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2', -- Corresponds to polar.bear@example.com in user-service
+    'b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2', -- Consistent UUID for polar.bear@example.com
+    'b2b2b2b2-b2b2-b2b2-b2b2-b2b2b2b2b2b2',
     'polar.bear@example.com',
-    '$2a$04$4gaE9mrolh0DpHgFkjEzIeO8kfvu5WZcaGqVqR5XTY0EcQw7gjmDu', -- Bcrypt for "Password123!"
+    '$2a$04$4gaE9mrolh0DpHgFkjEzIeO8kfvu5WZcaGqVqR5XTY0EcQw7gjmDu', -- Correct Bcrypt hash for "Password123!"
     'FREE',
     'LOCAL',
     TRUE,
@@ -27,4 +27,9 @@ INSERT INTO credentials (id, user_id, email, password_hash, role, auth_provider,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 )
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE 
+SET 
+    id = EXCLUDED.id,
+    user_id = EXCLUDED.user_id,
+    password_hash = EXCLUDED.password_hash,
+    updated_at = CURRENT_TIMESTAMP;

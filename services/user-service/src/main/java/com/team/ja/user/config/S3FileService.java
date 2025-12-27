@@ -1,6 +1,7 @@
 package com.team.ja.user.config;
 
 import com.team.ja.common.config.S3Configuration;
+import com.team.ja.common.exception.StorageException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
@@ -53,7 +54,7 @@ public class S3FileService {
             return buildFileUrl(key);
         } catch (Exception e) {
             log.error("Error uploading file to S3: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to upload file to S3", e);
+            throw new StorageException("Failed to upload file to S3", e);
         }
     }
 
@@ -68,6 +69,7 @@ public class S3FileService {
             log.info("File deleted successfully from S3: {}", key);
         } catch (Exception e) {
             log.error("Error deleting file from S3: {}", e.getMessage(), e);
+            throw new StorageException("Failed to delete file from S3", e);
         }
     }
 

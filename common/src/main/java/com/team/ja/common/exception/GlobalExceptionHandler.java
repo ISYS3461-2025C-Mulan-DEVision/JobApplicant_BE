@@ -90,6 +90,30 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ApiResponse<Void>> handleFileUploadException(FileUploadException ex) {
+        log.warn("File upload error: {} [{}]", ex.getMessage(), ex.getErrorCode());
+
+        ApiResponse<Void> response = ApiResponse.error(
+                ex.getMessage(),
+                ex.getErrorCode(),
+                ex.getClass().getSimpleName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStorageException(StorageException ex) {
+        log.error("Storage error: {}", ex.getMessage(), ex);
+
+        ApiResponse<Void> response = ApiResponse.error(
+                "A storage-related error occurred. Please try again later.",
+                ex.getErrorCode(),
+                ex.getClass().getSimpleName());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
     // ========================================
     // Handle All Other Exceptions (Fallback)
     // ========================================

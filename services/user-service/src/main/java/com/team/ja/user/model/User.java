@@ -66,13 +66,16 @@ public class User extends BaseEntity {
     /**
      * Full-text search vector for efficient searching.
      */
-    @Column(name = "fts_document", columnDefinition = "TSVECTOR")
-    private String ftsDocument; // Correct field for TSVECTOR type
-    // ... rest of the file
+    @Column(name = "fts_document", columnDefinition = "tsvector", insertable = false, updatable = false)
+    private String ftsDocument;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private Set<UserSkill> userSkills = new HashSet<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private Set<UserPortfolioItem> portfolioItems = new HashSet<>();
 
     /**
      * Get user's full name.
