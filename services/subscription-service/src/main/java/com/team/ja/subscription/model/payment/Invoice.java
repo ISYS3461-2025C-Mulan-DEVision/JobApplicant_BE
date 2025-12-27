@@ -28,7 +28,14 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class InvoicePayment extends BaseEntity {
+public class Invoice extends BaseEntity {
+
+    /**
+     * The unique identifier for the invoice payment
+     */
+    @Column(name = "invoice_id", nullable = false, unique = true)
+    @Schema(description = "The unique identifier for the invoice payment")
+    private UUID invoiceId;
 
     /**
      * The ID of the user associated with this invoice payment

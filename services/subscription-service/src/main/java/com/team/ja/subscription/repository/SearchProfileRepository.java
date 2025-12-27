@@ -1,5 +1,6 @@
 package com.team.ja.subscription.repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,5 +23,10 @@ public interface SearchProfileRepository extends JpaRepository<SearchProfile, UU
      * Check if a search profile exists for a given user ID.
      */
     boolean existsByUserId(UUID userId);
+
+    /**
+     * 
+     */
+    Optional<SearchProfile> findByIdAndUserId(UUID id, UUID userId);
 
 }

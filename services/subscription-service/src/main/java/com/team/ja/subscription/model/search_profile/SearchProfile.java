@@ -31,6 +31,8 @@ public class SearchProfile extends BaseEntity {
 
     /**
      * The ID of the user associated with this search profile
+     * This will be set via the kafka message when user creates or updates their
+     * search profile
      */
     @Column(name = "user_id", nullable = false, unique = true)
     @Schema(description = "The ID of the user associated with this search profile")
