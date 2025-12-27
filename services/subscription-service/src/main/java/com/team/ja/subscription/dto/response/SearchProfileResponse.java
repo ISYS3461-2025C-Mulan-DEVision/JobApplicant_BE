@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import com.team.ja.subscription.dto.response.SearchProfileSkillResponse;
-import com.team.ja.subscription.dto.response.SearchProfileEmployment;
+import com.team.ja.subscription.dto.response.SearchProfileEmploymentResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,7 +24,7 @@ public class SearchProfileResponse {
     private BigDecimal salaryMax;
     private String jobTitle;
     private List<SearchProfileSkillResponse> skills;
-    private List<SearchProfileEmployment> employments;
+    private List<SearchProfileEmploymentResponse> employments;
     private boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

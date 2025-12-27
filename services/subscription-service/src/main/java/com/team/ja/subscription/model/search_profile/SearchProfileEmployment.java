@@ -8,6 +8,7 @@ import com.team.ja.common.enumeration.EmploymentType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -39,9 +40,17 @@ public class SearchProfileEmployment extends BaseEntity {
     /**
      * The employment type associated with this search profile employment
      */
-    @ManyToOne
-    @JoinColumn(name = "search_profile_id", nullable = false)
+    @Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "employment_type", nullable = false)
     @Schema(description = "The employment type associated with this search profile employment")
     private EmploymentType employmentType;
+
+    /**
+     * The search profile associated with this employment
+     */
+    @ManyToOne
+    @JoinColumn(name = "search_profile_id", nullable = false)
+    @Schema(description = "The search profile associated with this employment")
+    private SearchProfile searchProfile;
 
 }

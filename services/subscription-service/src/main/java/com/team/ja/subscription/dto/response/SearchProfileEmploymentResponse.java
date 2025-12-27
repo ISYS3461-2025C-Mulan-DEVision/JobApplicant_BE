@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class SearchProfileEmployment {
+public class SearchProfileEmploymentResponse {
     private UUID id;
     private UUID userId;
     private EmploymentType employmentType;

@@ -11,7 +11,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SearchProfileSkillResponse {
-    private UUID id;
-    private UUID userId;
     private UUID skillId;
 }

@@ -31,4 +31,21 @@ public interface SearchProfileEmploymentRepository extends JpaRepository<SearchP
      */
     void deleteByUserId(UUID userId);
 
+    /**
+     * Find active employments by search profile id.
+     */
+    List<SearchProfileEmployment> findBySearchProfileIdAndIsActiveTrue(UUID searchProfileId);
+
+    /**
+     * Find an active employment by id and user id.
+     */
+    java.util.Optional<SearchProfileEmployment> findByIdAndUserIdAndIsActiveTrue(UUID id, UUID userId);
+
+    /**
+     * Find employment record by search profile id and employment type (any active
+     * state).
+     */
+    java.util.Optional<SearchProfileEmployment> findBySearchProfileIdAndEmploymentType(UUID searchProfileId,
+            com.team.ja.common.enumeration.EmploymentType employmentType);
+
 }

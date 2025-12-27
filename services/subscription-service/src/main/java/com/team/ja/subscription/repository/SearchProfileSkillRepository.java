@@ -18,6 +18,21 @@ public interface SearchProfileSkillRepository extends JpaRepository<SearchProfil
     List<SearchProfileSkill> findBySearchProfileId(UUID searchProfileId);
 
     /**
+     * Find all active skills associated with a given search profile ID.
+     */
+    List<SearchProfileSkill> findBySearchProfileIdAndIsActiveTrue(UUID searchProfileId);
+
+    /**
+     * Find an active skill by id and user id.
+     */
+    java.util.Optional<SearchProfileSkill> findByIdAndUserIdAndIsActiveTrue(UUID id, UUID userId);
+
+    /**
+     * Find a skill by search profile id and skill id (active or not).
+     */
+    java.util.Optional<SearchProfileSkill> findBySearchProfileIdAndSkillId(UUID searchProfileId, UUID skillId);
+
+    /**
      * Delete all skills associated with a given search profile ID.
      */
     void deleteBySearchProfileId(UUID searchProfileId);
