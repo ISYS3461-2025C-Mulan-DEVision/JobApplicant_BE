@@ -20,6 +20,11 @@ public interface UserSkillRepository extends JpaRepository<UserSkill, UUID> {
     List<UserSkill> findByUserIdAndIsActiveTrue(UUID userId);
 
     /**
+     * Find all skill relations for a user, including inactive ones.
+     */
+    List<UserSkill> findByUserId(UUID userId);
+
+    /**
      * Find a specific user-skill mapping.
      */
     Optional<UserSkill> findByUserIdAndSkillIdAndIsActiveTrue(UUID userId, UUID skillId);

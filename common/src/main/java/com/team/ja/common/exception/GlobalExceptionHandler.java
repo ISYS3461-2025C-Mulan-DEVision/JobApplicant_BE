@@ -25,7 +25,8 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(
                 ex.getMessage(),
-                ex.getErrorCode());
+                ex.getErrorCode(),
+                ex.getClass().getSimpleName());
 
         HttpStatus status = ex.getHttpStatus() != null ? ex.getHttpStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(status.value()).body(response);
@@ -49,7 +50,8 @@ public class GlobalExceptionHandler {
         ApiResponse<Void> response = ApiResponse.error(
                 "Validation failed",
                 "VALIDATION_ERROR",
-                errors);
+                errors,
+                ex.getClass().getSimpleName());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -67,7 +69,8 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(
                 message,
-                "TYPE_MISMATCH");
+                "TYPE_MISMATCH",
+                ex.getClass().getSimpleName());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
@@ -81,9 +84,34 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(
                 ex.getMessage(),
-                "INVALID_ARGUMENT");
+                "INVALID_ARGUMENT",
+                ex.getClass().getSimpleName());
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(FileUploadException.class)
+    public ResponseEntity<ApiResponse<Void>> handleFileUploadException(FileUploadException ex) {
+        log.warn("File upload error: {} [{}]", ex.getMessage(), ex.getErrorCode());
+
+        ApiResponse<Void> response = ApiResponse.error(
+                ex.getMessage(),
+                ex.getErrorCode(),
+                ex.getClass().getSimpleName());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStorageException(StorageException ex) {
+        log.error("Storage error: {}", ex.getMessage(), ex);
+
+        ApiResponse<Void> response = ApiResponse.error(
+                "A storage-related error occurred. Please try again later.",
+                ex.getErrorCode(),
+                ex.getClass().getSimpleName());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     // ========================================
@@ -95,7 +123,8 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Void> response = ApiResponse.error(
                 "An unexpected error occurred",
-                "INTERNAL_ERROR");
+                "INTERNAL_ERROR",
+                ex.getClass().getSimpleName());
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }

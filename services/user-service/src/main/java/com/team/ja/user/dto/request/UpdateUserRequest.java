@@ -1,6 +1,7 @@
 package com.team.ja.user.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,6 +29,7 @@ public class UpdateUserRequest {
     @Schema(description = "User's last name", example = "Doe")
     private String lastName;
 
+    @Pattern(regexp = "^\\+[0-9]{1,12}$", message = "Phone number must start with '+' followed by up to 12 digits.")
     @Size(max = 20, message = "Phone must not exceed 20 characters")
     @Schema(description = "User's phone number", example = "+84901234567")
     private String phone;

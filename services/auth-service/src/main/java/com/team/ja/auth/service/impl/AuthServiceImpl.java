@@ -12,6 +12,7 @@ import com.team.ja.auth.repository.VerificationTokenRepository;
 import com.team.ja.auth.security.JwtService;
 import com.team.ja.auth.service.AuthService;
 import com.team.ja.auth.service.EmailService;
+import com.team.ja.auth.service.TokenBlacklistService;
 import com.team.ja.common.enumeration.Role;
 import com.team.ja.common.event.UserRegisteredEvent;
 import com.team.ja.common.exception.BadRequestException;
@@ -19,6 +20,7 @@ import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.common.exception.UnauthorizedException;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +31,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 /**
  * Implementation of AuthService.
@@ -45,6 +48,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRegisteredProducer userRegisteredProducer;
     private final EmailService emailService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpiration;
@@ -167,8 +171,11 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        // Generate and save a new verification token (existing tokens may still be
-        // valid; client will use the latest email)
+        // Invalidate all old tokens for this user before creating a new one
+        verificationTokenRepository.deleteByCredential(credential);
+        log.info("Invalidated old verification tokens for {}", email);
+
+        // Generate and save a new verification token
         String token = UUID.randomUUID().toString();
         VerificationToken verificationToken = VerificationToken.builder()
                 .token(token)
@@ -284,6 +291,21 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public void logout(String token) {
+        if (!StringUtils.hasText(token)) {
+            return;
+        }
+        try {
+            String jti = jwtService.extractJti(token);
+            Date expiration = jwtService.extractExpiration(token);
+            tokenBlacklistService.blacklistToken(jti, expiration);
+            log.info("Token {} has been blacklisted.", jti);
+        } catch (Exception e) {
+            log.warn("Could not blacklist token: {}", e.getMessage());
+        }
+    }
+
     private AuthResponse generateAuthResponse(AuthCredential credential) {
         String accessToken = jwtService.generateAccessToken(
                 credential,
@@ -301,3 +323,4 @@ public class AuthServiceImpl implements AuthService {
                 .build();
     }
 }
+
