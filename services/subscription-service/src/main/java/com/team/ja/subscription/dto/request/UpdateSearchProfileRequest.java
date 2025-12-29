@@ -32,4 +32,7 @@ public class UpdateSearchProfileRequest {
     @Schema(description = "Desired job title")
     private String jobTitle;
 
+    @Schema(description = "Fresher indicator for the search profile")
+    private Boolean isFresher;
+
 }

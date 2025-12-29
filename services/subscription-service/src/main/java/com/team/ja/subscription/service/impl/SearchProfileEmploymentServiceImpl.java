@@ -1,14 +1,12 @@
 package com.team.ja.subscription.service.impl;
 
 import com.team.ja.common.exception.NotFoundException;
-import com.team.ja.common.enumeration.EmploymentType;
 import com.team.ja.subscription.dto.request.CreateSearchProfileEmploymentRequest;
 import com.team.ja.subscription.dto.request.UpdateSearchProfileEmploymentRequest;
 import com.team.ja.subscription.dto.response.SearchProfileEmploymentResponse;
 import com.team.ja.subscription.model.search_profile.SearchProfileEmployment;
 import com.team.ja.subscription.mapper.SearchProfileEmploymentMapper;
 import com.team.ja.subscription.model.search_profile.SearchProfile;
-import com.team.ja.subscription.model.search_profile.SearchProfileEmployment;
 import com.team.ja.subscription.repository.SearchProfileEmploymentRepository;
 import com.team.ja.subscription.repository.SearchProfileRepository;
 import com.team.ja.subscription.service.SearchProfileEmploymentService;

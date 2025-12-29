@@ -14,8 +14,6 @@ import java.util.UUID;
 
 import jakarta.transaction.Transactional;
 
-
-
 @Service
 @RequiredArgsConstructor
 public class SearchProfileServiceImpl implements SearchProfileService {
@@ -51,6 +49,9 @@ public class SearchProfileServiceImpl implements SearchProfileService {
         }
         if (request.getJobTitle() != null) {
             profile.setJobTitle(request.getJobTitle());
+        }
+        if (request.getIsFresher() != null) {
+            profile.setIsFresher(request.getIsFresher());
         }
 
         searchProfileRepository.save(profile);

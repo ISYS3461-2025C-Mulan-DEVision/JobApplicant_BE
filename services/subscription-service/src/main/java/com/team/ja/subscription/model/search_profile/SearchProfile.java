@@ -60,6 +60,13 @@ public class SearchProfile extends BaseEntity {
     private BigDecimal salaryMax;
 
     /**
+     * Fresher indicator for the search profile
+     */
+    @Column(name = "is_fresher", nullable = true, unique = false)
+    @Schema(description = "Fresher indicator for the search profile")
+    private Boolean isFresher;
+
+    /**
      * The job title associated with this search profile
      */
     @Column(name = "job_title", nullable = true, unique = false)
@@ -72,6 +79,13 @@ public class SearchProfile extends BaseEntity {
     @OneToMany(mappedBy = "searchProfile")
     @Schema(description = "The skills associated with this search profile")
     private List<SearchProfileSkill> skills;
+
+    /**
+     * The job titles associated with this search profile
+     */
+    @OneToMany(mappedBy = "searchProfile")
+    @Schema(description = "The job titles associated with this search profile")
+    private List<SearchProfileJobTitle> jobTitles;
 
     /**
      * The employment types (full-time, part-time, etc.) associated with this search

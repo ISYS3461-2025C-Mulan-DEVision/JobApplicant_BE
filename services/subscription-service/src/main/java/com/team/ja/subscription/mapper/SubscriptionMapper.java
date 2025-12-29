@@ -16,5 +16,5 @@ public interface SubscriptionMapper {
     @Mapping(source = "subscriptionStatus", target = "subscriptionStatus")
     @Mapping(source = "subscriptionStartDate", target = "subscriptionStartDate")
     @Mapping(source = "subscriptionEndDate", target = "subscriptionEndDate")
-    UserSubscription toEntity(CreateSubscriptionRequest req);
+    UserSubscription toEntity(CreateSubscriptionRequest request);
 }

@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import com.team.ja.subscription.dto.response.SearchProfileSkillResponse;
-import com.team.ja.subscription.dto.response.SearchProfileEmploymentResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,8 +20,10 @@ public class SearchProfileResponse {
     private UUID countryId;
     private BigDecimal salaryMin;
     private BigDecimal salaryMax;
+    private Boolean isFresher;
     private String jobTitle;
     private List<SearchProfileSkillResponse> skills;
+    private List<SearchProfileJobTitleResponse> jobTitles;
     private List<SearchProfileEmploymentResponse> employments;
     private boolean isActive;
     private LocalDateTime createdAt;

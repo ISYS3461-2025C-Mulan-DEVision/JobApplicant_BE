@@ -37,6 +37,7 @@ public class SearchProfileConsumer {
         profile.setSalaryMin(null);
         profile.setSalaryMax(null);
         profile.setSkills(null);
+        profile.setIsFresher(null);
         // Set the profile as active by default
         profile.setActive(true);
         searchProfileRepository.save(profile);
