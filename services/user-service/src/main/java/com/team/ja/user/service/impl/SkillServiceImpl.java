@@ -1,10 +1,13 @@
 package com.team.ja.user.service.impl;
 
+import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.dto.response.SkillResponse;
+import com.team.ja.user.kafka.UserProfileUpdatedProducer;
 import com.team.ja.user.mapper.SkillMapper;
 import com.team.ja.user.model.Skill;
+import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.repository.SkillRepository;
 import com.team.ja.user.repository.UserRepository;
@@ -17,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of SkillService.
@@ -30,6 +34,7 @@ public class SkillServiceImpl implements SkillService {
     private final SkillRepository skillRepository;
     private final UserSkillRepository userSkillRepository;
     private final UserRepository userRepository;
+    private final UserProfileUpdatedProducer profileUpdatedProducer;
     private final SkillMapper skillMapper;
 
     @Override
@@ -70,55 +75,59 @@ public class SkillServiceImpl implements SkillService {
     public List<SkillResponse> addSkillsToUser(UUID userId, List<UUID> skillIds) {
         log.info("Adding {} skills to user {}", skillIds.size(), userId);
 
-        // Verify user exists
         validateUserExists(userId);
 
-        // Validate all skills exist
         List<Skill> skills = skillRepository.findByIdInAndIsActiveTrue(skillIds);
         if (skills.size() != skillIds.size()) {
-            throw new NotFoundException("Some skills not found");
+            throw new NotFoundException("One or more skills not found or are inactive.");
         }
 
-        // Add skills that user doesn't already have
-        for (UUID skillId : skillIds) {
-            // Check if user currently has this skill active
-            if (userSkillRepository.existsByUserIdAndSkillIdAndIsActiveTrue(userId, skillId)) {
-                continue;
-            }
-            // Check if user had this skill but set as inactive
-            var inactiveUserSkill = userSkillRepository.findByUserIdAndSkillId(userId, skillId);
-            if (inactiveUserSkill.isPresent()) {
-                var userSkill = inactiveUserSkill.get();
-                userSkill.activate();
-                userSkillRepository.save(userSkill);
+        boolean skillsChanged = false;
+        // Find all existing skill relations for this user, active or not
+        List<UserSkill> existingUserSkills = userSkillRepository.findByUserId(userId);
 
-                // Increment usage count
-                Skill skill = skills.stream()
-                        .filter(s -> s.getId().equals(skillId))
-                        .findFirst()
-                        .orElseThrow();
-                skill.setUsageCount(skill.getUsageCount() + 1);
-                skillRepository.save(skill);
-            }
+        for (Skill skillToAdd : skills) {
+            UserSkill existingRelation = existingUserSkills.stream()
+                .filter(us -> us.getSkillId().equals(skillToAdd.getId()))
+                .findFirst()
+                .orElse(null);
 
-            if (!userSkillRepository.existsByUserIdAndSkillIdAndIsActiveTrue(userId, skillId)) {
-                UserSkill userSkill = UserSkill.builder()
-                        .userId(userId)
-                        .skillId(skillId)
-                        .build();
-                userSkillRepository.save(userSkill);
-
-                // Increment usage count
-                Skill skill = skills.stream()
-                        .filter(s -> s.getId().equals(skillId))
-                        .findFirst()
-                        .orElseThrow();
-                skill.setUsageCount(skill.getUsageCount() + 1);
-                skillRepository.save(skill);
+            if (existingRelation == null) {
+                // This is a brand new skill for the user
+                skillsChanged = true;
+                UserSkill newUserSkill = UserSkill.builder().userId(userId).skillId(skillToAdd.getId()).build();
+                userSkillRepository.save(newUserSkill);
+                skillToAdd.setUsageCount(skillToAdd.getUsageCount() + 1);
+            } else if (!existingRelation.isActive()) {
+                // The user had this skill before, but it was inactive
+                skillsChanged = true;
+                existingRelation.activate();
+                userSkillRepository.save(existingRelation);
+                skillToAdd.setUsageCount(skillToAdd.getUsageCount() + 1);
             }
+            // If the relation exists and is already active, do nothing.
+        }
+        
+        skillRepository.saveAll(skills);
+
+        if (skillsChanged) {
+            log.info("Skills changed for user {}. Publishing event.", userId);
+            List<UUID> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId)
+                    .stream()
+                    .map(UserSkill::getSkillId)
+                    .collect(Collectors.toList());
+
+            UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
+                    .userId(userId)
+                    .updateType(UserProfileUpdatedEvent.UpdateType.SKILLS)
+                    .skillIds(allUserSkillIds)
+                    .build();
+            profileUpdatedProducer.sendProfileUpdatedEvent(event);
+
+            userRepository.findById(userId).ifPresent(User::markProfileUpdated);
         }
 
-        log.info("Added skills to user {}", userId);
+        log.info("Finished adding skills to user {}", userId);
         return getUserSkills(userId);
     }
 
@@ -140,8 +149,22 @@ public class SkillServiceImpl implements SkillService {
                 skillRepository.save(skill);
             }
         });
+        
+        log.info("Removed skill {} from user {}. Publishing event.", skillId, userId);
+        List<UUID> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId)
+                .stream()
+                .map(UserSkill::getSkillId)
+                .collect(Collectors.toList());
 
-        log.info("Removed skill {} from user {}", skillId, userId);
+        UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
+                .userId(userId)
+                .updateType(UserProfileUpdatedEvent.UpdateType.SKILLS)
+                .skillIds(allUserSkillIds)
+                .build();
+        profileUpdatedProducer.sendProfileUpdatedEvent(event);
+
+        // Mark user profile as updated
+        userRepository.findById(userId).ifPresent(User::markProfileUpdated);
     }
 
     @Override

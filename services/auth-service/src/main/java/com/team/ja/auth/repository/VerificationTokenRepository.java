@@ -1,5 +1,6 @@
 package com.team.ja.auth.repository;
 
+import com.team.ja.auth.model.AuthCredential;
 import com.team.ja.auth.model.VerificationToken;
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -18,4 +19,6 @@ public interface VerificationTokenRepository
     void deleteByToken(String token);
 
     void deleteByExpiryDateBefore(LocalDateTime cutoff);
+    
+    void deleteByCredential(AuthCredential credential);
 }

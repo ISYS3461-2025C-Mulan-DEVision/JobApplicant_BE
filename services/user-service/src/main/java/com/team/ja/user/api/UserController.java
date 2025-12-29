@@ -1,6 +1,7 @@
 package com.team.ja.user.api;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.UserProfileResponse;
@@ -12,7 +13,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +65,17 @@ public class UserController {
         return ApiResponse.success("Users retrieved successfully", userService.getAllUsers());
     }
 
+    @GetMapping("/search")
+    @Operation(summary = "Search for users", description = "Search for users based on various criteria")
+    public ApiResponse<List<UserResponse>> searchUsers(
+            @RequestParam(required = false) String skills,
+            @RequestParam(required = false) String country,
+            @RequestParam(required = false) String keyword) {
+        // This will be implemented in the next steps.
+        // For now, it will call a non-existent method to follow the plan.
+        return ApiResponse.success("Users retrieved successfully", userService.searchUsers(skills, country, keyword));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieve a user by their ID")
     public ApiResponse<UserResponse> getUserById(
@@ -79,7 +93,9 @@ public class UserController {
     @GetMapping("/{id}/profile")
     @Operation(summary = "Get user profile", description = "Retrieve complete user profile with education, experience, and skills")
     public ApiResponse<UserProfileResponse> getUserProfile(
-            @Parameter(description = "User ID") @PathVariable UUID id) {
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(id, authUserId);
         return ApiResponse.success(userService.getUserProfile(id));
     }
 
@@ -87,15 +103,31 @@ public class UserController {
     @Operation(summary = "Update user", description = "Update user profile (User can only update own profile)")
     public ApiResponse<UserResponse> updateUser(
             @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
             @Valid @RequestBody UpdateUserRequest request) {
+        authorize(id, authUserId);
         return ApiResponse.success("User updated successfully", userService.updateUser(id, request));
+    }
+
+    @PostMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload avatar", description = "Upload or update a user's avatar")
+    public ApiResponse<UserResponse> uploadAvatar(
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID from JWT") @RequestHeader("X-User-Id") String authUserIdStr,
+            @Parameter(description = "Avatar image file") @RequestParam("file") MultipartFile file) {
+        
+        authorize(id, authUserIdStr);
+        UserResponse response = userService.uploadAvatar(id, file);
+        return ApiResponse.success("Avatar uploaded successfully", response);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Deactivate user", description = "Soft delete user account (User can only deactivate own account)")
     public ApiResponse<Void> deactivateUser(
-            @Parameter(description = "User ID") @PathVariable UUID id) {
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(id, authUserId);
         userService.deactivateUser(id);
         return ApiResponse.success("User deactivated successfully", null);
     }
@@ -112,5 +144,12 @@ public class UserController {
     public ApiResponse<Boolean> existsByEmail(
             @Parameter(description = "Email to check") @RequestParam String email) {
         return ApiResponse.success(userService.existsByEmail(email));
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 }

@@ -39,6 +39,14 @@ public interface UserService {
     UserResponse updateUser(UUID userId, UpdateUserRequest request);
 
     /**
+     * Upload and update user avatar.
+     * @param userId User ID
+     * @param file Image file for the avatar
+     * @return Updated user response
+     */
+    UserResponse uploadAvatar(UUID userId, org.springframework.web.multipart.MultipartFile file);
+
+    /**
      * Get user by ID.
      * 
      * @param id User ID
@@ -70,6 +78,16 @@ public interface UserService {
      * @return List of users
      */
     List<UserResponse> getAllUsers();
+
+    /**
+     * Search for users based on criteria.
+     * 
+     * @param skills Comma-separated list of skills
+     * @param country Country code
+     * @param keyword General keyword for search
+     * @return List of matching users
+     */
+    List<UserResponse> searchUsers(String skills, String country, String keyword);
 
     /**
      * Deactivate (soft delete) a user.
