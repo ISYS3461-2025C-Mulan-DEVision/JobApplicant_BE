@@ -97,6 +97,20 @@ public class AuthController {
         return ApiResponse.success("Token refreshed", response);
     }
 
+    @PostMapping("/logout")
+    @Operation(
+        summary = "Logout",
+        description = "Invalidate the current user's access token"
+    )
+    public ApiResponse<String> logout(@RequestHeader("Authorization") String authorizationHeader) {
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            String token = authorizationHeader.substring(7);
+            authService.logout(token);
+            return ApiResponse.success("Logged out successfully");
+        }
+        return ApiResponse.error("Invalid authorization header");
+    }
+
     @GetMapping("/validate")
     @Operation(
         summary = "Validate token",

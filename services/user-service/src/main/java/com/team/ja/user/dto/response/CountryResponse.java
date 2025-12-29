@@ -21,5 +21,8 @@ public class CountryResponse {
 
     @Schema(description = "Country abbreviation", example = "VN")
     private String abbreviation;
+    
+    @Schema(description = "Country Id", example = "69b65398-55d7-4d12-8378-e561b31c37c3")
+    private String id;
 }
 
