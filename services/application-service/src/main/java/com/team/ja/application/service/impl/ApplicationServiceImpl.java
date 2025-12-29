@@ -14,6 +14,7 @@ import com.team.ja.application.model.JobApplication;
 import com.team.ja.application.repository.JobApplicationRepository;
 import com.team.ja.application.service.ApplicationService;
 import com.team.ja.common.enumeration.ApplicationStatus;
+import com.team.ja.common.enumeration.DocType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -59,22 +60,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             // Upload resume file
             String resumeUrl = s3FileService.uploadFile(request.getResumeFile(), "applications/resumes");
 
-            // Upload cover letter if provided
-            String coverLetterUrl = null;
-            if (request.getCoverLetterFile() != null && !request.getCoverLetterFile().isEmpty()) {
-                coverLetterUrl = s3FileService.uploadFile(request.getCoverLetterFile(), "applications/cover-letters");
-            }
-
-            // Upload additional files if provided
-            List<String> additionalFileUrls = new ArrayList<>();
-            if (request.getAdditionalFiles() != null && request.getAdditionalFiles().length > 0) {
-                for (MultipartFile file : request.getAdditionalFiles()) {
-                    if (file != null && !file.isEmpty()) {
-                        String fileUrl = s3FileService.uploadFile(file, "applications/additional-files");
-                        additionalFileUrls.add(fileUrl);
-                    }
-                }
-            }
+            // Upload cover letter file
+            String coverLetterUrl = s3FileService.uploadFile(request.getCoverLetterFile(), "applications/cover-letters");
 
             // Create application entity
             JobApplication application = JobApplication.builder()
@@ -83,7 +70,6 @@ public class ApplicationServiceImpl implements ApplicationService {
                     .status(ApplicationStatus.SUBMITTED)
                     .resumeUrl(resumeUrl)
                     .coverLetterUrl(coverLetterUrl)
-                    .additionalFiles(applicationMapper.serializeAdditionalFiles(additionalFileUrls))
                     .appliedAt(LocalDateTime.now())
                     .applicationStatusUpdatedAt(LocalDateTime.now())
                     .isActive(true)
@@ -167,8 +153,8 @@ public class ApplicationServiceImpl implements ApplicationService {
 
     @Override
     @Transactional(readOnly = true)
-    public String getApplicationFileUrl(UUID userId, UUID applicationId, String fileType) {
-        log.info("Fetching file: {} for application: {} user: {}", fileType, applicationId, userId);
+    public byte[] downloadApplicationFile(UUID userId, UUID applicationId, String fileType) {
+        log.info("Downloading file: {} for application: {} user: {}", fileType, applicationId, userId);
 
         JobApplication application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
@@ -178,31 +164,36 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new RuntimeException("You do not have access to this application");
         }
 
+        // Convert string to DocType enum
+        DocType docType;
+        try {
+            docType = DocType.valueOf(fileType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid document type: " + fileType);
+        }
+
         String fileUrl = null;
-        switch (fileType.toLowerCase()) {
-            case "resume":
+        switch (docType) {
+            case RESUME:
                 fileUrl = application.getResumeUrl();
                 break;
-            case "coverletter":
+            case COVER_LETTER:
                 fileUrl = application.getCoverLetterUrl();
                 break;
-            default:
-                // Handle additional files (additional_0, additional_1, etc.)
-                if (fileType.startsWith("additional_")) {
-                    List<String> additionalFiles = parseAdditionalFiles(application.getAdditionalFiles());
-                    int index = Integer.parseInt(fileType.split("_")[1]);
-                    if (index < additionalFiles.size()) {
-                        fileUrl = additionalFiles.get(index);
-                    }
-                }
-                break;
         }
 
-        if (fileUrl == null) {
-            throw new RuntimeException("File not found");
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            throw new RuntimeException("File not found for type: " + fileType);
         }
 
-        return fileUrl;
+        try {
+            byte[] fileContent = s3FileService.downloadFile(fileUrl);
+            log.info("File downloaded successfully: {} bytes", fileContent.length);
+            return fileContent;
+        } catch (Exception e) {
+            log.error("Error downloading file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to download file: " + e.getMessage());
+        }
     }
 
     // ==================== INTERNAL ENDPOINTS ====================
@@ -339,23 +330,6 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         return applicationMapper.toResponse(restoredApplication);
     }
-
     // ==================== HELPER METHODS ====================
 
-    /**
-     * Parse additional files JSON string to List.
-     */
-    private List<String> parseAdditionalFiles(String additionalFilesJson) {
-        if (additionalFilesJson == null || additionalFilesJson.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        try {
-            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-            return mapper.readValue(additionalFilesJson, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            log.error("Error parsing additional files: {}", e.getMessage());
-            return new ArrayList<>();
-        }
-    }
 }

@@ -5,6 +5,7 @@ import com.team.ja.application.dto.request.UpdateApplicationStatusRequest;
 import com.team.ja.application.dto.response.ApplicationResponse;
 import com.team.ja.application.service.ApplicationService;
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.enumeration.DocType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -121,16 +124,24 @@ public class ApplicationController {
         return ApiResponse.success("Application withdrawn successfully", null);
     }
 
-    @GetMapping("/{applicationId}/files/{fileType}")
-    @Operation(summary = "Download application file", description = "Get download URL for resume, cover letter, or additional files")
-    public ApiResponse<String> getApplicationFile(
+    @GetMapping("/{applicationId}/files/{docType}")
+    @Operation(summary = "Download application file", description = "Download resume, cover letter, or other application files")
+    public ResponseEntity<?> downloadApplicationFile(
             @RequestHeader("X-User-ID") String userId,
             @Parameter(description = "Application ID") @PathVariable UUID applicationId,
-            @Parameter(description = "File type: resume, coverLetter, additional_0, etc") @PathVariable String fileType) {
+            @Parameter(description = "Document type: RESUME, COVER_LETTER") @PathVariable DocType docType) {
 
         UUID userUUID = UUID.fromString(userId);
-        String fileUrl = applicationService.getApplicationFileUrl(userUUID, applicationId, fileType);
-        return ApiResponse.success("File URL retrieved successfully", fileUrl);
+        byte[] fileContent = applicationService.downloadApplicationFile(userUUID, applicationId, docType.name());
+        
+        // Determine content type and filename based on doc type
+        String contentType = "application/pdf";
+        String fileName = docType.name().toLowerCase().replace("_", "-") + ".pdf";
+        
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header("Content-Disposition", "inline; filename=\"" + fileName + "\"")
+                .body(fileContent);
     }
 }
 

@@ -229,6 +229,7 @@ docker-compose ps
 ```bash
 # Build entire project
 mvn clean package -DskipTests
+mvn -T 12 package -DskipTests  # Parallel build
 
 # Run a specific service
 cd services/user-service

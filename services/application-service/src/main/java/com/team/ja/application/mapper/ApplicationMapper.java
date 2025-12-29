@@ -4,8 +4,7 @@ package com.team.ja.application.mapper;
 
 import com.team.ja.application.dto.response.ApplicationResponse;
 import com.team.ja.application.model.JobApplication;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.team.ja.common.enumeration.DocType;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -16,12 +15,6 @@ import java.util.List;
  */
 @Component
 public class ApplicationMapper {
-
-    private final ObjectMapper objectMapper;
-
-    public ApplicationMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * Convert JobApplication entity to ApplicationResponse DTO.
@@ -36,9 +29,7 @@ public class ApplicationMapper {
                 .userId(entity.getUserId())
                 .jobPostId(entity.getJobPostId())
                 .status(entity.getStatus().toString())
-                .resumeUrl(entity.getResumeUrl())
-                .coverLetterUrl(entity.getCoverLetterUrl())
-                .additionalFiles(parseAdditionalFiles(entity.getAdditionalFiles()))
+                .availableDocuments(buildAvailableDocuments(entity))
                 .appliedAt(entity.getAppliedAt())
                 .applicationStatusUpdatedAt(entity.getApplicationStatusUpdatedAt())
                 .userNotes(entity.getUserNotes())
@@ -51,34 +42,19 @@ public class ApplicationMapper {
     }
 
     /**
-     * Parse additional files JSON string to List.
+     * Build list of available documents for the application.
      */
-    private List<String> parseAdditionalFiles(String additionalFilesJson) {
-        if (additionalFilesJson == null || additionalFilesJson.isEmpty()) {
-            return new ArrayList<>();
+    private List<DocType> buildAvailableDocuments(JobApplication entity) {
+        List<DocType> availableDocs = new ArrayList<>();
+        
+        if (entity.getResumeUrl() != null && !entity.getResumeUrl().isEmpty()) {
+            availableDocs.add(DocType.RESUME);
         }
-
-        try {
-            return objectMapper.readValue(additionalFilesJson, new TypeReference<List<String>>() {});
-        } catch (Exception e) {
-            // Log error if needed
-            return new ArrayList<>();
+        
+        if (entity.getCoverLetterUrl() != null && !entity.getCoverLetterUrl().isEmpty()) {
+            availableDocs.add(DocType.COVER_LETTER);
         }
-    }
-
-    /**
-     * Convert additional files List to JSON string for storage.
-     */
-    public String serializeAdditionalFiles(List<String> fileUrls) {
-        if (fileUrls == null || fileUrls.isEmpty()) {
-            return null;
-        }
-
-        try {
-            return objectMapper.writeValueAsString(fileUrls);
-        } catch (Exception e) {
-            // Log error if needed
-            return null;
-        }
+        
+        return availableDocs;
     }
 }
