@@ -345,13 +345,16 @@ public class UserServiceImpl implements UserService {
         );
 
         List<String> skillList = (skills != null && !skills.isEmpty())
-            ? Arrays.asList(skills.split(","))
+            ? Arrays.stream(skills.split(","))
+                  .map(String::trim)
+                  .filter(s -> !s.isEmpty())
+                  .toList()
             : Collections.emptyList();
 
         UUID countryFilterId = null;
         if (country != null && !country.isEmpty()) {
             countryFilterId = countryRepository
-                .findByAbbreviation(country)
+                .findByAbbreviation(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
@@ -363,12 +366,14 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasCountry(countryFilterId));
 
         if (keyword != null && !keyword.isEmpty()) {
-            List<User> ftsCandidates = userRepository.findByFts(keyword);
-            List<UUID> ftsIds = ftsCandidates
-                .stream()
-                .map(User::getId)
-                .toList();
-            spec = spec.and(UserSpecification.idIn(ftsIds));
+            List<User> ftsCandidates = userRepository.findByFts(keyword.trim());
+            if (!ftsCandidates.isEmpty()) {
+                List<UUID> ftsIds = ftsCandidates
+                    .stream()
+                    .map(User::getId)
+                    .toList();
+                spec = spec.and(UserSpecification.idIn(ftsIds));
+            }
         }
 
         return userRepository
@@ -398,13 +403,16 @@ public class UserServiceImpl implements UserService {
         );
 
         List<String> skillList = (skills != null && !skills.isEmpty())
-            ? Arrays.asList(skills.split(","))
+            ? Arrays.stream(skills.split(","))
+                  .map(String::trim)
+                  .filter(s -> !s.isEmpty())
+                  .toList()
             : Collections.emptyList();
 
         UUID countryFilterId = null;
         if (country != null && !country.isEmpty()) {
             countryFilterId = countryRepository
-                .findByAbbreviation(country)
+                .findByAbbreviation(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
@@ -416,12 +424,14 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasCountry(countryFilterId));
 
         if (keyword != null && !keyword.isEmpty()) {
-            List<User> ftsCandidates = userRepository.findByFts(keyword);
-            List<UUID> ftsIds = ftsCandidates
-                .stream()
-                .map(User::getId)
-                .toList();
-            spec = spec.and(UserSpecification.idIn(ftsIds));
+            List<User> ftsCandidates = userRepository.findByFts(keyword.trim());
+            if (!ftsCandidates.isEmpty()) {
+                List<UUID> ftsIds = ftsCandidates
+                    .stream()
+                    .map(User::getId)
+                    .toList();
+                spec = spec.and(UserSpecification.idIn(ftsIds));
+            }
         }
 
         Pageable pageable = PageRequest.of(page, size);
