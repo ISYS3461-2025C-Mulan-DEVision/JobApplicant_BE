@@ -1,5 +1,6 @@
 package com.team.ja.user.service.impl;
 
+import com.team.ja.common.dto.PageResponse;
 import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.BadRequestException;
 import com.team.ja.common.exception.ConflictException;
@@ -31,15 +32,6 @@ import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
 import com.team.ja.user.repository.specification.UserSpecification;
 import com.team.ja.user.service.UserService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.imgscalr.Scalr;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,6 +40,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import javax.imageio.ImageIO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.imgscalr.Scalr;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Implementation of UserService.
@@ -74,34 +77,47 @@ public class UserServiceImpl implements UserService {
     private final CountryMapper countryMapper;
 
     private static final int AVATAR_SIZE = 256;
-    private static final List<String> SUPPORTED_IMAGE_TYPES = List.of("image/jpeg", "image/png", "image/gif");
+    private static final List<String> SUPPORTED_IMAGE_TYPES = List.of(
+        "image/jpeg",
+        "image/png",
+        "image/gif"
+    );
 
     @Override
     @Transactional
     public UserResponse createUser(CreateUserRequest request) {
         log.info("Creating new user with email: {}", request.getEmail());
-        
+
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ConflictException("User with email " + request.getEmail() + " already exists");
+            throw new ConflictException(
+                "User with email " + request.getEmail() + " already exists"
+            );
         }
-        
+
         if (request.getCountryId() != null) {
-            countryRepository.findById(request.getCountryId())
-                    .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
+            countryRepository
+                .findById(request.getCountryId())
+                .orElseThrow(() ->
+                    new NotFoundException(
+                        "Country",
+                        "id",
+                        request.getCountryId().toString()
+                    )
+                );
         }
-        
+
         User user = User.builder()
-                .email(request.getEmail())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .phone(request.getPhone())
-                .countryId(request.getCountryId())
-                .objectiveSummary(request.getObjectiveSummary())
-                .build();
-        
+            .email(request.getEmail())
+            .firstName(request.getFirstName())
+            .lastName(request.getLastName())
+            .phone(request.getPhone())
+            .countryId(request.getCountryId())
+            .objectiveSummary(request.getObjectiveSummary())
+            .build();
+
         User savedUser = userRepository.save(user);
         log.info("Created user with ID: {}", savedUser.getId());
-        
+
         return mapUserWithCountry(savedUser);
     }
 
@@ -109,38 +125,61 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
         log.info("Updating user with ID: {}", userId);
-        
-        User user = userRepository.findById(userId)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+
+        User user = userRepository
+            .findById(userId)
+            .filter(User::isActive)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", userId.toString())
+            );
+
         UUID oldCountryId = user.getCountryId();
-        
+
         // Update fields if provided
-        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
-        if (request.getLastName() != null) user.setLastName(request.getLastName());
+        if (request.getFirstName() != null) user.setFirstName(
+            request.getFirstName()
+        );
+        if (request.getLastName() != null) user.setLastName(
+            request.getLastName()
+        );
         if (request.getPhone() != null) user.setPhone(request.getPhone());
         if (request.getCountryId() != null) {
-            countryRepository.findById(request.getCountryId())
-                    .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
+            countryRepository
+                .findById(request.getCountryId())
+                .orElseThrow(() ->
+                    new NotFoundException(
+                        "Country",
+                        "id",
+                        request.getCountryId().toString()
+                    )
+                );
             user.setCountryId(request.getCountryId());
         }
-        if (request.getObjectiveSummary() != null) user.setObjectiveSummary(request.getObjectiveSummary());
-        
+        if (request.getAddress() != null) user.setAddress(request.getAddress());
+        if (request.getCity() != null) user.setCity(request.getCity());
+        if (request.getObjectiveSummary() != null) user.setObjectiveSummary(
+            request.getObjectiveSummary()
+        );
+
         user.markProfileUpdated();
         User savedUser = userRepository.save(user);
 
         // Check if country has changed and publish event
         if (!Objects.equals(oldCountryId, savedUser.getCountryId())) {
-            log.info("User {} country changed from {} to {}. Publishing event.", userId, oldCountryId, savedUser.getCountryId());
+            log.info(
+                "User {} country changed from {} to {}. Publishing event.",
+                userId,
+                oldCountryId,
+                savedUser.getCountryId()
+            );
             UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
-                    .userId(userId)
-                    .updateType(UserProfileUpdatedEvent.UpdateType.COUNTRY)
-                    .countryId(savedUser.getCountryId())
-                    .build();
+                .userId(userId)
+                .updateType(UserProfileUpdatedEvent.UpdateType.COUNTRY)
+                .countryId(savedUser.getCountryId())
+                .build();
             profileUpdatedProducer.sendProfileUpdatedEvent(event);
         }
-        
+
         log.info("Updated user with ID: {}", savedUser.getId());
         return mapUserWithCountry(savedUser);
     }
@@ -150,18 +189,32 @@ public class UserServiceImpl implements UserService {
     public UserResponse uploadAvatar(UUID userId, MultipartFile file) {
         log.info("Uploading avatar for user {}", userId);
 
-        User user = userRepository.findById(userId)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        User user = userRepository
+            .findById(userId)
+            .filter(User::isActive)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", userId.toString())
+            );
 
-        if (file.isEmpty()) throw new BadRequestException("File cannot be empty.");
+        if (file.isEmpty()) throw new BadRequestException(
+            "File cannot be empty."
+        );
         if (!SUPPORTED_IMAGE_TYPES.contains(file.getContentType())) {
-            throw new BadRequestException("Unsupported image type. Please upload a JPEG, PNG, or GIF.");
+            throw new BadRequestException(
+                "Unsupported image type. Please upload a JPEG, PNG, or GIF."
+            );
         }
 
         try {
             BufferedImage originalImage = ImageIO.read(file.getInputStream());
-            BufferedImage resizedImage = Scalr.resize(originalImage, Scalr.Method.QUALITY, Scalr.Mode.AUTOMATIC, AVATAR_SIZE, AVATAR_SIZE, Scalr.OP_ANTIALIAS);
+            BufferedImage resizedImage = Scalr.resize(
+                originalImage,
+                Scalr.Method.QUALITY,
+                Scalr.Mode.AUTOMATIC,
+                AVATAR_SIZE,
+                AVATAR_SIZE,
+                Scalr.OP_ANTIALIAS
+            );
 
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             String format = file.getContentType().split("/")[1];
@@ -172,109 +225,226 @@ public class UserServiceImpl implements UserService {
                 s3FileService.deleteFile(user.getAvatarUrl());
             }
 
-            String avatarUrl = s3FileService.uploadFile(imageBytes, file.getOriginalFilename(), file.getContentType(), "avatars");
-            
+            String avatarUrl = s3FileService.uploadFile(
+                imageBytes,
+                file.getOriginalFilename(),
+                file.getContentType(),
+                "avatars"
+            );
+
             user.setAvatarUrl(avatarUrl);
             user.markProfileUpdated();
             User savedUser = userRepository.save(user);
 
-            log.info("Successfully uploaded avatar for user {}. URL: {}", userId, avatarUrl);
+            log.info(
+                "Successfully uploaded avatar for user {}. URL: {}",
+                userId,
+                avatarUrl
+            );
             return mapUserWithCountry(savedUser);
-
         } catch (IOException e) {
             log.error("Failed to process image for user {}", userId, e);
             throw new BadRequestException("Could not process image file.");
         }
     }
-    
+
     @Override
     public UserResponse getUserById(UUID id) {
         log.info("Fetching user by ID: {}", id);
-        User user = userRepository.findById(id)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", id.toString()));
+        User user = userRepository
+            .findById(id)
+            .filter(User::isActive)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", id.toString())
+            );
         return mapUserWithCountry(user);
     }
 
     @Override
     public UserResponse getUserByEmail(String email) {
         log.info("Fetching user by email: {}", email);
-        User user = userRepository.findByEmailAndIsActiveTrue(email)
-                .orElseThrow(() -> new NotFoundException("User", "email", email));
+        User user = userRepository
+            .findByEmailAndIsActiveTrue(email)
+            .orElseThrow(() -> new NotFoundException("User", "email", email));
         return mapUserWithCountry(user);
     }
 
     @Override
     public UserProfileResponse getUserProfile(UUID userId) {
         log.info("Fetching complete profile for user: {}", userId);
-        
-        User user = userRepository.findById(userId)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
-        List<UserEducation> education = userEducationRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
-        List<UserWorkExperience> workExperience = userWorkExperienceRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
-        List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
-        List<UUID> skillIds = userSkills.stream().map(UserSkill::getSkillId).toList();
-        List<Skill> skills = skillIds.isEmpty() ? List.of() : skillRepository.findByIdInAndIsActiveTrue(skillIds);
-        
-        List<UserEducationResponse> educationResponses = education.stream().map(userEducationMapper::toResponse).toList();
-        List<UserWorkExperienceResponse> workExpResponses = workExperience.stream().map(this::mapWorkExperienceWithCountry).toList();
+
+        User user = userRepository
+            .findById(userId)
+            .filter(User::isActive)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", userId.toString())
+            );
+
+        List<UserEducation> education =
+            userEducationRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(
+                userId
+            );
+        List<UserWorkExperience> workExperience =
+            userWorkExperienceRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(
+                userId
+            );
+        List<UserSkill> userSkills =
+            userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+        List<UUID> skillIds = userSkills
+            .stream()
+            .map(UserSkill::getSkillId)
+            .toList();
+        List<Skill> skills = skillIds.isEmpty()
+            ? List.of()
+            : skillRepository.findByIdInAndIsActiveTrue(skillIds);
+
+        List<UserEducationResponse> educationResponses = education
+            .stream()
+            .map(userEducationMapper::toResponse)
+            .toList();
+        List<UserWorkExperienceResponse> workExpResponses = workExperience
+            .stream()
+            .map(this::mapWorkExperienceWithCountry)
+            .toList();
         List<SkillResponse> skillResponses = skillMapper.toResponseList(skills);
-        
+
         return UserProfileResponse.builder()
-                .user(mapUserWithCountry(user))
-                .education(educationResponses)
-                .workExperience(workExpResponses)
-                .skills(skillResponses)
-                .build();
+            .user(mapUserWithCountry(user))
+            .education(educationResponses)
+            .workExperience(workExpResponses)
+            .skills(skillResponses)
+            .build();
     }
 
     @Override
     public List<UserResponse> getAllUsers() {
         log.info("Fetching all active users");
-        return userRepository.findAll().stream()
-                .filter(User::isActive)
-                .map(this::mapUserWithCountry)
-                .toList();
+        return userRepository
+            .findAll()
+            .stream()
+            .filter(User::isActive)
+            .map(this::mapUserWithCountry)
+            .toList();
     }
 
+    /**
+     * Non-paginated search. Kept for backward compatibility.
+     * Now enforces isActive and combines FTS with filters by intersecting IDs.
+     */
     @Override
-    public List<UserResponse> searchUsers(String skills, String country, String keyword) {
-        log.info("Searching for users with skills [{}], country [{}], and keyword [{}]", skills, country, keyword);
-
-        if (keyword != null && !keyword.isEmpty()) {
-            // If a keyword is provided, prioritize FTS and return results directly.
-            // Note: This simplified approach does not combine FTS with other filters yet.
-            return userRepository.findByFts(keyword).stream()
-                    .map(this::mapUserWithCountry)
-                    .toList();
-        }
+    public List<UserResponse> searchUsers(
+        String skills,
+        String country,
+        String keyword
+    ) {
+        log.info(
+            "Searching for users with skills [{}], country [{}], and keyword [{}]",
+            skills,
+            country,
+            keyword
+        );
 
         List<String> skillList = (skills != null && !skills.isEmpty())
-                ? Arrays.asList(skills.split(","))
-                : Collections.emptyList();
-        
+            ? Arrays.asList(skills.split(","))
+            : Collections.emptyList();
+
         UUID countryFilterId = null;
         if (country != null && !country.isEmpty()) {
-            countryFilterId = countryRepository.findByAbbreviation(country)
-                    .map(com.team.ja.user.model.Country::getId)
-                    .orElse(null);
+            countryFilterId = countryRepository
+                .findByAbbreviation(country)
+                .map(com.team.ja.user.model.Country::getId)
+                .orElse(null);
         }
 
-        Specification<User> spec = Specification.where(UserSpecification.hasSkills(skillList))
-                .and(UserSpecification.hasCountry(countryFilterId));
+        Specification<User> spec = Specification.where(
+            UserSpecification.isActive()
+        )
+            .and(UserSpecification.hasSkills(skillList))
+            .and(UserSpecification.hasCountry(countryFilterId));
 
-        return userRepository.findAll(spec).stream()
-                .map(this::mapUserWithCountry)
+        if (keyword != null && !keyword.isEmpty()) {
+            List<User> ftsCandidates = userRepository.findByFts(keyword);
+            List<UUID> ftsIds = ftsCandidates
+                .stream()
+                .map(User::getId)
                 .toList();
+            spec = spec.and(UserSpecification.idIn(ftsIds));
+        }
+
+        return userRepository
+            .findAll(spec)
+            .stream()
+            .map(this::mapUserWithCountry)
+            .toList();
+    }
+
+    /**
+     * Paginated search combining FTS with filters and enforcing isActive.
+     */
+    public PageResponse<UserResponse> searchUsersPaged(
+        String skills,
+        String country,
+        String keyword,
+        int page,
+        int size
+    ) {
+        log.info(
+            "Searching for users (paged) with skills [{}], country [{}], keyword [{}], page [{}], size [{}]",
+            skills,
+            country,
+            keyword,
+            page,
+            size
+        );
+
+        List<String> skillList = (skills != null && !skills.isEmpty())
+            ? Arrays.asList(skills.split(","))
+            : Collections.emptyList();
+
+        UUID countryFilterId = null;
+        if (country != null && !country.isEmpty()) {
+            countryFilterId = countryRepository
+                .findByAbbreviation(country)
+                .map(com.team.ja.user.model.Country::getId)
+                .orElse(null);
+        }
+
+        Specification<User> spec = Specification.where(
+            UserSpecification.isActive()
+        )
+            .and(UserSpecification.hasSkills(skillList))
+            .and(UserSpecification.hasCountry(countryFilterId));
+
+        if (keyword != null && !keyword.isEmpty()) {
+            List<User> ftsCandidates = userRepository.findByFts(keyword);
+            List<UUID> ftsIds = ftsCandidates
+                .stream()
+                .map(User::getId)
+                .toList();
+            spec = spec.and(UserSpecification.idIn(ftsIds));
+        }
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> result = userRepository.findAll(spec, pageable);
+
+        List<UserResponse> content = result
+            .getContent()
+            .stream()
+            .map(this::mapUserWithCountry)
+            .toList();
+
+        return PageResponse.of(content, result);
     }
 
     @Override
     @Transactional
     public void deactivateUser(UUID userId) {
         log.info("Deactivating user with ID: {}", userId);
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+        User user = userRepository
+            .findById(userId)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", userId.toString())
+            );
         user.deactivate();
         userRepository.save(user);
         log.info("Deactivated user with ID: {}", userId);
@@ -284,16 +454,20 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponse reactivateUser(UUID userId) {
         log.info("Reactivating user with ID: {}", userId);
-        User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
+        User user = userRepository
+            .findById(userId)
+            .orElseThrow(() ->
+                new NotFoundException("User", "id", userId.toString())
+            );
+
         if (user.isActive()) {
             log.warn("User {} is already active", userId);
             return mapUserWithCountry(user);
         }
-        
+
         user.activate();
         User savedUser = userRepository.save(user);
-        
+
         log.info("Reactivated user with ID: {}", userId);
         return mapUserWithCountry(savedUser);
     }
@@ -306,19 +480,24 @@ public class UserServiceImpl implements UserService {
     private UserResponse mapUserWithCountry(User user) {
         UserResponse response = userMapper.toResponse(user);
         if (user.getCountryId() != null) {
-            countryRepository.findById(user.getCountryId())
-                    .map(countryMapper::toResponse)
-                    .ifPresent(response::setCountry);
+            countryRepository
+                .findById(user.getCountryId())
+                .map(countryMapper::toResponse)
+                .ifPresent(response::setCountry);
         }
         return response;
     }
 
-    private UserWorkExperienceResponse mapWorkExperienceWithCountry(UserWorkExperience workExp) {
-        UserWorkExperienceResponse response = userWorkExperienceMapper.toResponse(workExp);
+    private UserWorkExperienceResponse mapWorkExperienceWithCountry(
+        UserWorkExperience workExp
+    ) {
+        UserWorkExperienceResponse response =
+            userWorkExperienceMapper.toResponse(workExp);
         if (workExp.getCountryId() != null) {
-            countryRepository.findById(workExp.getCountryId())
-                    .map(countryMapper::toResponse)
-                    .ifPresent(response::setCountry);
+            countryRepository
+                .findById(workExp.getCountryId())
+                .map(countryMapper::toResponse)
+                .ifPresent(response::setCountry);
         }
         return response;
     }

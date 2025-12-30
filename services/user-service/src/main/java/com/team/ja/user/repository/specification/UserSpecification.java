@@ -5,13 +5,16 @@ import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserSkill;
 import jakarta.persistence.criteria.*;
+import java.util.List;
+import java.util.UUID; // <--- Add this import
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
-import java.util.UUID; // <--- Add this import
-
 public class UserSpecification {
+
+    public static Specification<User> isActive() {
+        return (root, query, cb) -> cb.isTrue(root.get("isActive"));
+    }
 
     public static Specification<User> hasSkills(List<String> skills) {
         return (root, query, criteriaBuilder) -> {
@@ -32,6 +35,16 @@ public class UserSpecification {
                 return criteriaBuilder.conjunction(); // always true
             }
             return criteriaBuilder.equal(root.get("countryId"), countryId);
+        };
+    }
+
+    public static Specification<User> idIn(List<UUID> ids) {
+        return (root, query, cb) -> {
+            if (ids == null || ids.isEmpty()) {
+                // Return a predicate that is always false when there are no IDs
+                return cb.disjunction();
+            }
+            return root.get("id").in(ids);
         };
     }
 }

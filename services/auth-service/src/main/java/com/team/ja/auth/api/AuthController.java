@@ -38,7 +38,40 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
         summary = "Register",
-        description = "Register a new user account and send activation email"
+        description = "Register a new user account. Required fields: email, password, firstName, lastName, country (2-letter abbreviation). Optional: phone, address (street), city. Sends an activation email to complete registration.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @io.swagger.v3.oas.annotations.media.Content(
+                mediaType = "application/json",
+                schema = @io.swagger.v3.oas.annotations.media.Schema(
+                    implementation = com.team.ja.auth.dto.request
+                        .RegisterRequest.class
+                ),
+                examples = {
+                    @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        name = "Register example",
+                        value = "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"country\": \"US\",\n  \"phone\": \"+84123456789\",\n  \"address\": \"123 Nguyen Hue Street\",\n  \"city\": \"Ho Chi Minh City\"\n}"
+                    ),
+                }
+            )
+        ),
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "201",
+                description = "Registration initiated. Activation email sent.",
+                content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "application/json",
+                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        name = "Registration initiated",
+                        value = "{\n  \"success\": true,\n  \"message\": \"Registration successful. Please check your email to activate your account.\",\n  \"timestamp\": \"2025-01-01T10:00:00\"\n}"
+                    )
+                )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "409",
+                description = "Email already registered"
+            ),
+        }
     )
     public ApiResponse<String> register(
         @Valid @RequestBody RegisterRequest request
@@ -52,7 +85,24 @@ public class AuthController {
     @GetMapping("/activate")
     @Operation(
         summary = "Activate account",
-        description = "Activate user account using a verification token"
+        description = "Activate a user account using the verification token received via email. On success, returns access and refresh tokens.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "Account activated; tokens issued",
+                content = @io.swagger.v3.oas.annotations.media.Content(
+                    mediaType = "application/json",
+                    examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                        name = "Activation success",
+                        value = "{\n  \"success\": true,\n  \"message\": \"Account activated successfully\",\n  \"data\": {\n    \"accessToken\": \"<jwt>\",\n    \"refreshToken\": \"<jwt>\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 3600,\n    \"userId\": \"11111111-1111-1111-1111-111111111111\",\n    \"email\": \"john.doe@example.com\",\n    \"role\": \"FREE\"\n  },\n  \"timestamp\": \"2025-01-01T10:00:00\"\n}"
+                    )
+                )
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "Invalid or expired activation token"
+            ),
+        }
     )
     public ApiResponse<AuthResponse> activateAccount(
         @RequestParam String token
@@ -102,8 +152,13 @@ public class AuthController {
         summary = "Logout",
         description = "Invalidate the current user's access token"
     )
-    public ApiResponse<String> logout(@RequestHeader("Authorization") String authorizationHeader) {
-        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+    public ApiResponse<String> logout(
+        @RequestHeader("Authorization") String authorizationHeader
+    ) {
+        if (
+            authorizationHeader != null &&
+            authorizationHeader.startsWith("Bearer ")
+        ) {
             String token = authorizationHeader.substring(7);
             authService.logout(token);
             return ApiResponse.success("Logged out successfully");
