@@ -346,7 +346,7 @@ public class UserServiceImpl implements UserService {
 
         List<String> skillList = (skills != null && !skills.isEmpty())
             ? Arrays.stream(skills.split(","))
-                  .map(String::trim)
+                  .map(s -> s.toLowerCase().trim())
                   .filter(s -> !s.isEmpty())
                   .toList()
             : Collections.emptyList();
@@ -366,7 +366,9 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasCountry(countryFilterId));
 
         if (keyword != null && !keyword.isEmpty()) {
-            List<User> ftsCandidates = userRepository.findByFts(keyword.trim());
+            String kw = keyword.trim();
+            // Apply FTS when available
+            List<User> ftsCandidates = userRepository.findByFts(kw);
             if (!ftsCandidates.isEmpty()) {
                 List<UUID> ftsIds = ftsCandidates
                     .stream()
@@ -374,6 +376,8 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
+            // Also allow country filtering by text (name or abbreviation), case-insensitive
+            spec = spec.and(UserSpecification.hasCountryByText(kw));
         }
 
         return userRepository
@@ -404,7 +408,7 @@ public class UserServiceImpl implements UserService {
 
         List<String> skillList = (skills != null && !skills.isEmpty())
             ? Arrays.stream(skills.split(","))
-                  .map(String::trim)
+                  .map(s -> s.toLowerCase().trim())
                   .filter(s -> !s.isEmpty())
                   .toList()
             : Collections.emptyList();
@@ -424,7 +428,9 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasCountry(countryFilterId));
 
         if (keyword != null && !keyword.isEmpty()) {
-            List<User> ftsCandidates = userRepository.findByFts(keyword.trim());
+            String kw = keyword.trim();
+            // Apply FTS when available
+            List<User> ftsCandidates = userRepository.findByFts(kw);
             if (!ftsCandidates.isEmpty()) {
                 List<UUID> ftsIds = ftsCandidates
                     .stream()
@@ -432,6 +438,8 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
+            // Also allow country filtering by text (name or abbreviation), case-insensitive
+            spec = spec.and(UserSpecification.hasCountryByText(kw));
         }
 
         Pageable pageable = PageRequest.of(page, size);
