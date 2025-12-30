@@ -54,7 +54,7 @@ public class UserRegisteredConsumer {
             !event.getCountryAbbreviation().isBlank()
         ) {
             countryId = countryRepository
-                .findByAbbreviation(event.getCountryAbbreviation())
+                .findByAbbreviationIgnoreCase(event.getCountryAbbreviation())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }

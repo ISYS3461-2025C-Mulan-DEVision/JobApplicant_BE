@@ -354,7 +354,7 @@ public class UserServiceImpl implements UserService {
         UUID countryFilterId = null;
         if (country != null && !country.isEmpty()) {
             countryFilterId = countryRepository
-                .findByAbbreviation(country.trim())
+                .findByAbbreviationIgnoreCase(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
@@ -376,8 +376,10 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
-            // Also allow country filtering by text (name or abbreviation), case-insensitive
-            spec = spec.and(UserSpecification.hasCountryByText(kw));
+            // Fallback: if explicit country filter is not provided, try country by keyword text
+            if (country == null || country.isEmpty()) {
+                spec = spec.and(UserSpecification.hasCountryByText(kw));
+            }
         }
 
         return userRepository
@@ -416,7 +418,7 @@ public class UserServiceImpl implements UserService {
         UUID countryFilterId = null;
         if (country != null && !country.isEmpty()) {
             countryFilterId = countryRepository
-                .findByAbbreviation(country.trim())
+                .findByAbbreviationIgnoreCase(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
@@ -438,8 +440,10 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
-            // Also allow country filtering by text (name or abbreviation), case-insensitive
-            spec = spec.and(UserSpecification.hasCountryByText(kw));
+            // Fallback: if explicit country filter is not provided, try country by keyword text
+            if (country == null || country.isEmpty()) {
+                spec = spec.and(UserSpecification.hasCountryByText(kw));
+            }
         }
 
         Pageable pageable = PageRequest.of(page, size);
