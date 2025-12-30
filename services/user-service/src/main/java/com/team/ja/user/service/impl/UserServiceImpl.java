@@ -335,13 +335,13 @@ public class UserServiceImpl implements UserService {
     public List<UserResponse> searchUsers(
         String skills,
         String country,
-        String keyword
+        String username
     ) {
         log.info(
-            "Searching for users with skills [{}], country [{}], and keyword [{}]",
+            "Searching for users with skills [{}], country [{}], and username [{}]",
             skills,
             country,
-            keyword
+            username
         );
 
         List<String> skillList = (skills != null && !skills.isEmpty())
@@ -365,10 +365,14 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasSkills(skillList))
             .and(UserSpecification.hasCountry(countryFilterId));
 
-        if (keyword != null && !keyword.isEmpty()) {
-            String kw = keyword.trim();
-            // Apply FTS when available
-            List<User> ftsCandidates = userRepository.findByFts(kw);
+        if (username != null && !username.isEmpty()) {
+            String un = username.trim();
+
+            // Case-insensitive LIKE across username fields (firstName, lastName)
+            spec = spec.and(UserSpecification.hasUsername(un));
+
+            // Apply FTS when available (AND only when there are matches)
+            List<User> ftsCandidates = userRepository.findByFts(un);
             if (!ftsCandidates.isEmpty()) {
                 List<UUID> ftsIds = ftsCandidates
                     .stream()
@@ -376,10 +380,8 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
-            // Fallback: if explicit country filter is not provided, try country by keyword text
-            if (country == null || country.isEmpty()) {
-                spec = spec.and(UserSpecification.hasCountryByText(kw));
-            }
+
+            // Do not apply country filtering from username text here
         }
 
         return userRepository
@@ -395,15 +397,15 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserResponse> searchUsersPaged(
         String skills,
         String country,
-        String keyword,
+        String username,
         int page,
         int size
     ) {
         log.info(
-            "Searching for users (paged) with skills [{}], country [{}], keyword [{}], page [{}], size [{}]",
+            "Searching for users (paged) with skills [{}], country [{}], username [{}], page [{}], size [{}]",
             skills,
             country,
-            keyword,
+            username,
             page,
             size
         );
@@ -429,10 +431,14 @@ public class UserServiceImpl implements UserService {
             .and(UserSpecification.hasSkills(skillList))
             .and(UserSpecification.hasCountry(countryFilterId));
 
-        if (keyword != null && !keyword.isEmpty()) {
-            String kw = keyword.trim();
-            // Apply FTS when available
-            List<User> ftsCandidates = userRepository.findByFts(kw);
+        if (username != null && !username.isEmpty()) {
+            String un = username.trim();
+
+            // Case-insensitive LIKE across username fields (firstName, lastName)
+            spec = spec.and(UserSpecification.hasUsername(un));
+
+            // Apply FTS when available (AND only when there are matches)
+            List<User> ftsCandidates = userRepository.findByFts(un);
             if (!ftsCandidates.isEmpty()) {
                 List<UUID> ftsIds = ftsCandidates
                     .stream()
@@ -440,10 +446,8 @@ public class UserServiceImpl implements UserService {
                     .toList();
                 spec = spec.and(UserSpecification.idIn(ftsIds));
             }
-            // Fallback: if explicit country filter is not provided, try country by keyword text
-            if (country == null || country.isEmpty()) {
-                spec = spec.and(UserSpecification.hasCountryByText(kw));
-            }
+
+            // Do not apply country filtering from username text here
         }
 
         Pageable pageable = PageRequest.of(page, size);

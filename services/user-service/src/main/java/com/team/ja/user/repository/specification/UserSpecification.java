@@ -91,4 +91,27 @@ public class UserSpecification {
             return root.get("countryId").in(countryIdSubquery);
         };
     }
+
+    /**
+     * Case-insensitive username match across firstName and lastName.
+     * Uses SQL LIKE with lowercased values to perform contains matches.
+     */
+    public static Specification<User> hasUsername(String username) {
+        return (root, query, cb) -> {
+            if (!StringUtils.hasText(username)) {
+                return cb.conjunction();
+            }
+            String lowered = username.trim().toLowerCase();
+
+            Expression<String> firstNameLower = cb.lower(root.get("firstName"));
+            Expression<String> lastNameLower = cb.lower(root.get("lastName"));
+
+            String pattern = "%" + lowered + "%";
+
+            return cb.or(
+                cb.like(firstNameLower, pattern),
+                cb.like(lastNameLower, pattern)
+            );
+        };
+    }
 }

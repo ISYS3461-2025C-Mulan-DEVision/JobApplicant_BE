@@ -86,21 +86,21 @@ public interface UserService {
      *
      * @param skills Comma-separated list of skills
      * @param country Country code
-     * @param keyword General keyword for search
+     * @param username Username text (firstName/lastName) for search
      * @return List of matching users
      */
     List<UserResponse> searchUsers(
         String skills,
         String country,
-        String keyword
+        String username
     );
 
     /**
-     * Paginated search combining filters and full-text keyword.
+     * Paginated search combining filters and username text.
      *
      * @param skills   Comma-separated skill names
      * @param country  Two-letter country abbreviation (e.g., US, VN)
-     * @param keyword  Free-text keyword for FTS
+     * @param username Username text (firstName/lastName)
      * @param page     0-based page number
      * @param size     page size
      * @return Paginated result
@@ -108,7 +108,7 @@ public interface UserService {
     PageResponse<UserResponse> searchUsersPaged(
         String skills,
         String country,
-        String keyword,
+        String username,
         int page,
         int size
     );

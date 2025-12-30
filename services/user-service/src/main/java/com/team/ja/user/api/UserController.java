@@ -89,14 +89,14 @@ public class UserController {
     public ApiResponse<PageResponse<UserResponse>> searchUsers(
         @RequestParam(required = false) String skills,
         @RequestParam(required = false) String country,
-        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String username,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         PageResponse<UserResponse> result = userService.searchUsersPaged(
             skills,
             country,
-            keyword,
+            username,
             page,
             size
         );
