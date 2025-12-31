@@ -1,6 +1,7 @@
 package com.team.ja.user.api;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.user.dto.request.CreateUserWorkExperienceRequest;
 import com.team.ja.user.dto.request.UpdateUserWorkExperienceRequest;
 import com.team.ja.user.dto.response.UserWorkExperienceResponse;
@@ -22,7 +23,6 @@ import java.util.UUID;
  * Auth Integration Notes:
  * - All operations require authenticated user
  * - User can only manage their own work experience records
- * - Replace path variable userId with JWT user ID in production
  */
 @RestController
 @RequestMapping("/api/v1/users/{userId}/work-experience")
@@ -37,7 +37,9 @@ public class UserWorkExperienceController {
     @Operation(summary = "Add work experience", description = "Add a new work experience entry")
     public ApiResponse<UserWorkExperienceResponse> createWorkExperience(
             @Parameter(description = "User ID") @PathVariable UUID userId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
             @Valid @RequestBody CreateUserWorkExperienceRequest request) {
+        authorize(userId, authUserId);
         return ApiResponse.success(
                 "Work experience added successfully",
                 workExperienceService.createWorkExperience(userId, request));
@@ -46,7 +48,9 @@ public class UserWorkExperienceController {
     @GetMapping
     @Operation(summary = "Get all work experience", description = "Get all work experience entries for a user")
     public ApiResponse<List<UserWorkExperienceResponse>> getWorkExperience(
-            @Parameter(description = "User ID") @PathVariable UUID userId) {
+            @Parameter(description = "User ID") @PathVariable UUID userId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(workExperienceService.getWorkExperienceByUserId(userId));
     }
 
@@ -54,7 +58,9 @@ public class UserWorkExperienceController {
     @Operation(summary = "Get work experience by ID", description = "Get a specific work experience entry")
     public ApiResponse<UserWorkExperienceResponse> getWorkExperienceById(
             @Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Work Experience ID") @PathVariable UUID workExpId) {
+            @Parameter(description = "Work Experience ID") @PathVariable UUID workExpId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(workExperienceService.getWorkExperienceById(userId, workExpId));
     }
 
@@ -63,7 +69,9 @@ public class UserWorkExperienceController {
     public ApiResponse<UserWorkExperienceResponse> updateWorkExperience(
             @Parameter(description = "User ID") @PathVariable UUID userId,
             @Parameter(description = "Work Experience ID") @PathVariable UUID workExpId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
             @Valid @RequestBody UpdateUserWorkExperienceRequest request) {
+        authorize(userId, authUserId);
         return ApiResponse.success(
                 "Work experience updated successfully",
                 workExperienceService.updateWorkExperience(userId, workExpId, request));
@@ -74,9 +82,18 @@ public class UserWorkExperienceController {
     @Operation(summary = "Delete work experience", description = "Delete a work experience entry")
     public ApiResponse<Void> deleteWorkExperience(
             @Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Work Experience ID") @PathVariable UUID workExpId) {
+            @Parameter(description = "Work Experience ID") @PathVariable UUID workExpId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         workExperienceService.deleteWorkExperience(userId, workExpId);
         return ApiResponse.success("Work experience deleted successfully", null);
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 }
 

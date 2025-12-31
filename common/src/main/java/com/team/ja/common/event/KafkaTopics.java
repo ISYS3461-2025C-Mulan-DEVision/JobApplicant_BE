@@ -25,6 +25,13 @@ public final class KafkaTopics {
     public static final String USER_UPDATED = "user-updated";
 
     /**
+     * Topic for significant user profile updates (e.g., skills, country).
+     * Producer: user-service
+     * Consumer: notification-service (for job matching)
+     */
+    public static final String USER_PROFILE_UPDATED = "user-profile-updated";
+
+    /**
      * Topic for subscription change events.
      * Producer: subscription-service
      * Consumer: user-service (to update premium status)

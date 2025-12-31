@@ -33,6 +33,9 @@ public class ApiResponse<T> {
     @Schema(description = "Error code (only present on errors)", example = "NOT_FOUND")
     private String errorCode;
 
+    @Schema(description = "The type of exception that occurred (only present on errors)", example = "NotFoundException")
+    private String exceptionType;
+
     @Schema(description = "List of validation errors (only present on validation failures)")
     private List<String> errors;
 
@@ -79,21 +82,23 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static <T> ApiResponse<T> error(String message, String errorCode) {
+    public static <T> ApiResponse<T> error(String message, String errorCode, String exceptionType) {
         return ApiResponse.<T>builder()
                 .success(false)
                 .message(message)
                 .errorCode(errorCode)
+                .exceptionType(exceptionType)
                 .timestamp(LocalDateTime.now())
                 .build();
     }
 
-    public static <T> ApiResponse<T> error(String message, String errorCode, List<String> errors) {
+    public static <T> ApiResponse<T> error(String message, String errorCode, List<String> errors, String exceptionType) {
         return ApiResponse.<T>builder()
                 .success(false)
                 .message(message)
                 .errorCode(errorCode)
                 .errors(errors)
+                .exceptionType(exceptionType)
                 .timestamp(LocalDateTime.now())
                 .build();
     }

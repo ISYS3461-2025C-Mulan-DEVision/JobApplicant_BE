@@ -34,6 +34,12 @@ public class VerificationToken extends BaseEntity {
     @JoinColumn(nullable = false, name = "credential_id")
     private AuthCredential credential;
 
+    @Column(nullable = true)
+    private String firstName;
+
+    @Column(nullable = true)
+    private String lastName;
+
     @Column(nullable = false)
     private LocalDateTime expiryDate;
 

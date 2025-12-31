@@ -2,6 +2,7 @@
 
 package com.team.ja.application.config;
 
+import com.team.ja.common.config.S3Configuration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,15 +27,10 @@ import java.util.UUID;
 public class S3FileService {
 
     private final S3Client s3Client;
+    private final S3Configuration s3Configuration;
 
-    @Value("${aws.s3.bucket-name:job-applicant-bucket}")
+    @Value("${aws.s3.bucket-name}")
     private String bucketName;
-
-    @Value("${aws.s3.region:us-east-1}")
-    private String region;
-
-    @Value("${aws.s3.endpoint:}")
-    private String endpoint;
 
     /**
      * Upload a file to S3 and return the file URL.
@@ -122,6 +118,9 @@ public class S3FileService {
      * Build the full URL for a file in S3/MinIO.
      */
     private String buildFileUrl(String key) {
+        String endpoint = s3Configuration.getEndpoint();
+        String region = s3Configuration.getRegion();
+        
         if (endpoint != null && !endpoint.isEmpty()) {
             // MinIO or custom S3-compatible endpoint
             return String.format("%s/%s/%s", endpoint, bucketName, key);

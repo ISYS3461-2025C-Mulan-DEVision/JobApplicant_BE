@@ -34,10 +34,15 @@ public class EmailServiceImpl implements EmailService {
             message.setTo(credential.getEmail());
             message.setSubject("Activate your JobApplicant account");
 
-            String activationLink =
-                activationBaseUrl +
-                "/api/v1/auth/activate?token=" +
-                activationToken;
+            // Build activation link assuming activationBaseUrl is the base origin.
+            String base = activationBaseUrl != null ? activationBaseUrl.trim() : "";
+            if (base.endsWith("/")) {
+                base = base.substring(0, base.length() - 1);
+            }
+            
+            String activationLink = String.format("%s/api/v1/auth/activate?token=%s", base, activationToken);
+            
+            String name = (credential.getUsername() != null && !credential.getUsername().isEmpty()) ? credential.getUsername() : "there";
             String emailContent = String.format(
                 "Hi %s,\n\n" +
                     "Welcome to JobApplicant!\n\n" +
@@ -47,7 +52,7 @@ public class EmailServiceImpl implements EmailService {
                     "Note: This link expires in 24 hours.\n\n" +
                     "Thank you,\n" +
                     "The JobApplicant Team",
-                credential.getUsername(),
+                name,
                 activationLink
             );
 

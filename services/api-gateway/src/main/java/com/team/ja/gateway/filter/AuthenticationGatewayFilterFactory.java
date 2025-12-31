@@ -2,6 +2,7 @@ package com.team.ja.gateway.filter;
 
 import com.team.ja.gateway.config.RouteValidator;
 import com.team.ja.gateway.security.JwtUtil;
+import com.team.ja.gateway.security.TokenBlacklistService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -23,11 +24,13 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
 
     private final JwtUtil jwtUtil;
     private final RouteValidator routeValidator;
+    private final TokenBlacklistService blacklistService;
 
-    public AuthenticationGatewayFilterFactory(JwtUtil jwtUtil, RouteValidator routeValidator) {
+    public AuthenticationGatewayFilterFactory(JwtUtil jwtUtil, RouteValidator routeValidator, TokenBlacklistService blacklistService) {
         super(Config.class);
         this.jwtUtil = jwtUtil;
         this.routeValidator = routeValidator;
+        this.blacklistService = blacklistService;
     }
 
     @Override
@@ -64,21 +67,31 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
                 return onError(exchange, "Invalid or expired token", HttpStatus.UNAUTHORIZED);
             }
 
-            // Extract user info and add to headers
-            String userId = jwtUtil.extractUserId(token);
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
+            // Check if token is blacklisted (logged out)
+            String jti = jwtUtil.extractJti(token);
+            return blacklistService.isBlacklisted(jti)
+                .flatMap(isBlacklisted -> {
+                    if (isBlacklisted) {
+                        log.warn("Revoked JWT token used for access attempt. JTI: {}", jti);
+                        return onError(exchange, "Token has been revoked", HttpStatus.UNAUTHORIZED);
+                    }
 
-            log.info("Authenticated request from user: {} ({})", username, userId);
+                    // Extract user info and add to headers
+                    String userId = jwtUtil.extractUserId(token);
+                    String username = jwtUtil.extractUsername(token);
+                    String role = jwtUtil.extractRole(token);
 
-            // Forward user info to downstream services
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId != null ? userId : "")
-                    .header("X-User-Email", username != null ? username : "")
-                    .header("X-User-Role", role != null ? role : "")
-                    .build();
+                    log.info("Authenticated request from user: {} ({})", username, userId);
 
-            return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                    // Forward user info to downstream services
+                    ServerHttpRequest modifiedRequest = request.mutate()
+                            .header("X-User-Id", userId != null ? userId : "")
+                            .header("X-User-Email", username != null ? username : "")
+                            .header("X-User-Role", role != null ? role : "")
+                            .build();
+
+                    return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                });
         };
     }
 
