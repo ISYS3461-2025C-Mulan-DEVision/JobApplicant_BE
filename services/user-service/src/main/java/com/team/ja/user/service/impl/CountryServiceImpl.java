@@ -52,7 +52,7 @@ public class CountryServiceImpl implements CountryService {
     public CountryResponse getCountryByAbbreviation(String abbreviation) {
         log.info("Fetching country by abbreviation={}", abbreviation);
         Country country = countryRepository
-            .findByAbbreviation(abbreviation)
+            .findByAbbreviationIgnoreCase(abbreviation)
             .orElseThrow(() ->
                 new NotFoundException("Country", "abbreviation", abbreviation)
             );

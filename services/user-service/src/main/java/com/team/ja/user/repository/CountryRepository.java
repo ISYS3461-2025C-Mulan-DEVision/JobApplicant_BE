@@ -14,11 +14,13 @@ import org.springframework.stereotype.Repository;
 public interface CountryRepository extends JpaRepository<Country, UUID> {
     List<Country> findByIsActiveTrueOrderByNameAsc();
 
-    Optional<Country> findByAbbreviation(String abbreviation);
+    Optional<Country> findByAbbreviationIgnoreCase(String abbreviation);
 
     Optional<Country> findByIdAndIsActiveTrue(java.util.UUID id);
 
-    Optional<Country> findByAbbreviationAndIsActiveTrue(String abbreviation);
+    Optional<Country> findByAbbreviationIgnoreCaseAndIsActiveTrue(
+        String abbreviation
+    );
 
     List<
         Country

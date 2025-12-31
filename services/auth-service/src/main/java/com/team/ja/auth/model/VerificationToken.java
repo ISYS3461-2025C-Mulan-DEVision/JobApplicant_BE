@@ -7,13 +7,12 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
-
-import java.time.LocalDateTime;
 
 /**
  * Entity for storing email verification tokens.
@@ -39,6 +38,18 @@ public class VerificationToken extends BaseEntity {
 
     @Column(nullable = true)
     private String lastName;
+
+    @Column(nullable = true, length = 3)
+    private String countryAbbreviation;
+
+    @Column(nullable = true, length = 20)
+    private String phone;
+
+    @Column(nullable = true, length = 255)
+    private String address;
+
+    @Column(nullable = true, length = 100)
+    private String city;
 
     @Column(nullable = false)
     private LocalDateTime expiryDate;
