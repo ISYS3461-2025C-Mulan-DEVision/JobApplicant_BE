@@ -1,5 +1,6 @@
 package com.team.ja.auth.dto.request;
 
+import com.team.ja.common.validation.annotation.StrictEmail;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -21,7 +22,7 @@ import lombok.NoArgsConstructor;
 public class RegisterRequest {
 
     @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @StrictEmail
     @Schema(description = "User's email", example = "john.doe@example.com")
     private String email;
 
