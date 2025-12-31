@@ -80,6 +80,7 @@ public interface UserService {
      * @return List of users
      */
     List<UserResponse> getAllUsers();
+    PageResponse<UserResponse> getAllUsersPaged(int page, int size);
 
     /**
      * Search for users based on criteria.
@@ -92,22 +93,34 @@ public interface UserService {
     List<UserResponse> searchUsers(
         String skills,
         String country,
+        String city,
+        String education,
+        String workExperience,
+        String employmentTypes,
         String username
     );
 
     /**
      * Paginated search combining filters and username text.
      *
-     * @param skills   Comma-separated skill names
-     * @param country  Two-letter country abbreviation (e.g., US, VN)
-     * @param username Username text (firstName/lastName)
-     * @param page     0-based page number
-     * @param size     page size
+     * @param skills           Comma-separated skill names (OR semantics)
+     * @param country          Two-letter country abbreviation (e.g., US, VN). If both city and country provided, city is prioritized.
+     * @param city             City name (case-insensitive contains). Mutually exclusive with country; city is prioritized when both provided.
+     * @param education        Education level filter (e.g., BACHELOR, MASTER, DOCTORATE)
+     * @param workExperience   Work experience filter. Supports NONE, ANY, or comma-separated keywords (case-insensitive contains across jobTitle/companyName/description)
+     * @param employmentTypes  Comma-separated employment types (e.g., FULL_TIME,CONTRACT)
+     * @param username         Comma-separated tokens to match against firstName/lastName/fullName (case-insensitive contains)
+     * @param page             0-based page number
+     * @param size             page size
      * @return Paginated result
      */
     PageResponse<UserResponse> searchUsersPaged(
         String skills,
         String country,
+        String city,
+        String education,
+        String workExperience,
+        String employmentTypes,
         String username,
         int page,
         int size

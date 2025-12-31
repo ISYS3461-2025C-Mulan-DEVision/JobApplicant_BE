@@ -71,14 +71,18 @@ public class UserController {
 
     @GetMapping
     @Operation(
-        summary = "Get all users",
-        description = "Retrieve all active users (Admin only in production)"
+        summary = "Get all users (paged)",
+        description = "Retrieve all active users with pagination (Admin only in production)"
     )
-    public ApiResponse<List<UserResponse>> getAllUsers() {
-        return ApiResponse.success(
-            "Users retrieved successfully",
-            userService.getAllUsers()
+    public ApiResponse<PageResponse<UserResponse>> getAllUsers(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size
+    ) {
+        PageResponse<UserResponse> result = userService.getAllUsersPaged(
+            page,
+            size
         );
+        return ApiResponse.success("Users retrieved successfully", result);
     }
 
     @GetMapping("/search")
@@ -89,6 +93,10 @@ public class UserController {
     public ApiResponse<PageResponse<UserResponse>> searchUsers(
         @RequestParam(required = false) String skills,
         @RequestParam(required = false) String country,
+        @RequestParam(required = false) String city,
+        @RequestParam(required = false) String education,
+        @RequestParam(required = false) String workExperience,
+        @RequestParam(required = false) String employmentTypes,
         @RequestParam(required = false) String username,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
@@ -96,6 +104,10 @@ public class UserController {
         PageResponse<UserResponse> result = userService.searchUsersPaged(
             skills,
             country,
+            city,
+            education,
+            workExperience,
+            employmentTypes,
             username,
             page,
             size

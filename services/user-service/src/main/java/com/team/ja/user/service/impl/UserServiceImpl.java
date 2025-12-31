@@ -327,6 +327,23 @@ public class UserServiceImpl implements UserService {
             .toList();
     }
 
+    public PageResponse<UserResponse> getAllUsersPaged(int page, int size) {
+        log.info(
+            "Fetching all active users (paged), page [{}], size [{}]",
+            page,
+            size
+        );
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> result = userRepository.findAll(pageable);
+        List<UserResponse> content = result
+            .getContent()
+            .stream()
+            .filter(User::isActive)
+            .map(this::mapUserWithCountry)
+            .toList();
+        return PageResponse.of(content, result);
+    }
+
     /**
      * Non-paginated search. Kept for backward compatibility.
      * Now enforces isActive and combines FTS with filters by intersecting IDs.
@@ -335,12 +352,20 @@ public class UserServiceImpl implements UserService {
     public List<UserResponse> searchUsers(
         String skills,
         String country,
+        String city,
+        String education,
+        String workExperience,
+        String employmentTypes,
         String username
     ) {
         log.info(
-            "Searching for users with skills [{}], country [{}], and username [{}]",
+            "Searching for users with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], and username [{}]",
             skills,
             country,
+            city,
+            education,
+            workExperience,
+            employmentTypes,
             username
         );
 
@@ -351,19 +376,75 @@ public class UserServiceImpl implements UserService {
                   .toList()
             : Collections.emptyList();
 
+        // Parse city (prioritize city over country when both provided)
+        String cityFilter = (city != null && !city.isBlank())
+            ? city.trim()
+            : null;
+
+        // Parse country (only used when city not provided)
         UUID countryFilterId = null;
-        if (country != null && !country.isEmpty()) {
+        if ((cityFilter == null) && country != null && !country.isBlank()) {
             countryFilterId = countryRepository
                 .findByAbbreviationIgnoreCase(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
 
+        // Parse education level
+        com.team.ja.common.enumeration.EducationLevel educationLevel = null;
+        if (education != null && !education.isBlank()) {
+            try {
+                educationLevel =
+                    com.team.ja.common.enumeration.EducationLevel.valueOf(
+                        education.trim().toUpperCase()
+                    );
+            } catch (IllegalArgumentException ignored) {
+                educationLevel = null;
+            }
+        }
+
+        // Parse work experience keywords (CSV)
+        List<String> workExpKeywords = (workExperience != null &&
+                !workExperience.isBlank())
+            ? Arrays.stream(workExperience.split(","))
+                  .map(s -> s.toLowerCase().trim())
+                  .filter(s -> !s.isEmpty())
+                  .toList()
+            : Collections.emptyList();
+
+        // Parse employment types (CSV)
+        List<com.team.ja.common.enumeration.EmploymentType> empTypes =
+            (employmentTypes != null && !employmentTypes.isBlank())
+                ? Arrays.stream(employmentTypes.split(","))
+                      .map(String::trim)
+                      .filter(s -> !s.isEmpty())
+                      .map(String::toUpperCase)
+                      .map(typeStr -> {
+                          try {
+                              return com.team.ja.common.enumeration.EmploymentType.valueOf(
+                                  typeStr
+                              );
+                          } catch (IllegalArgumentException ex) {
+                              return null;
+                          }
+                      })
+                      .filter(java.util.Objects::nonNull)
+                      .toList()
+                : java.util.Collections.emptyList();
+
         Specification<User> spec = Specification.where(
             UserSpecification.isActive()
         )
             .and(UserSpecification.hasSkills(skillList))
-            .and(UserSpecification.hasCountry(countryFilterId));
+            // Location: prioritize city over country
+            .and(UserSpecification.hasCity(cityFilter))
+            .and(UserSpecification.hasCountry(countryFilterId))
+            // Education level
+            .and(UserSpecification.hasEducationLevel(educationLevel))
+            // Work experience keywords
+            .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
+            // Employment types
+            .and(UserSpecification.hasEmploymentTypes(empTypes));
 
         if (username != null && !username.isEmpty()) {
             String un = username.trim();
@@ -397,14 +478,22 @@ public class UserServiceImpl implements UserService {
     public PageResponse<UserResponse> searchUsersPaged(
         String skills,
         String country,
+        String city,
+        String education,
+        String workExperience,
+        String employmentTypes,
         String username,
         int page,
         int size
     ) {
         log.info(
-            "Searching for users (paged) with skills [{}], country [{}], username [{}], page [{}], size [{}]",
+            "Searching for users (paged) with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], username [{}], page [{}], size [{}]",
             skills,
             country,
+            city,
+            education,
+            workExperience,
+            employmentTypes,
             username,
             page,
             size
@@ -417,19 +506,75 @@ public class UserServiceImpl implements UserService {
                   .toList()
             : Collections.emptyList();
 
+        // Parse city (prioritize city over country when both provided)
+        String cityFilter = (city != null && !city.isBlank())
+            ? city.trim()
+            : null;
+
+        // Parse country (only used when city not provided)
         UUID countryFilterId = null;
-        if (country != null && !country.isEmpty()) {
+        if ((cityFilter == null) && country != null && !country.isBlank()) {
             countryFilterId = countryRepository
                 .findByAbbreviationIgnoreCase(country.trim())
                 .map(com.team.ja.user.model.Country::getId)
                 .orElse(null);
         }
 
+        // Parse education level
+        com.team.ja.common.enumeration.EducationLevel educationLevel = null;
+        if (education != null && !education.isBlank()) {
+            try {
+                educationLevel =
+                    com.team.ja.common.enumeration.EducationLevel.valueOf(
+                        education.trim().toUpperCase()
+                    );
+            } catch (IllegalArgumentException ignored) {
+                educationLevel = null;
+            }
+        }
+
+        // Parse work experience keywords (CSV)
+        List<String> workExpKeywords = (workExperience != null &&
+                !workExperience.isBlank())
+            ? Arrays.stream(workExperience.split(","))
+                  .map(s -> s.toLowerCase().trim())
+                  .filter(s -> !s.isEmpty())
+                  .toList()
+            : Collections.emptyList();
+
+        // Parse employment types (CSV)
+        List<com.team.ja.common.enumeration.EmploymentType> empTypes =
+            (employmentTypes != null && !employmentTypes.isBlank())
+                ? Arrays.stream(employmentTypes.split(","))
+                      .map(String::trim)
+                      .filter(s -> !s.isEmpty())
+                      .map(String::toUpperCase)
+                      .map(typeStr -> {
+                          try {
+                              return com.team.ja.common.enumeration.EmploymentType.valueOf(
+                                  typeStr
+                              );
+                          } catch (IllegalArgumentException ex) {
+                              return null;
+                          }
+                      })
+                      .filter(java.util.Objects::nonNull)
+                      .toList()
+                : java.util.Collections.emptyList();
+
         Specification<User> spec = Specification.where(
             UserSpecification.isActive()
         )
             .and(UserSpecification.hasSkills(skillList))
-            .and(UserSpecification.hasCountry(countryFilterId));
+            // Location: prioritize city over country
+            .and(UserSpecification.hasCity(cityFilter))
+            .and(UserSpecification.hasCountry(countryFilterId))
+            // Education level
+            .and(UserSpecification.hasEducationLevel(educationLevel))
+            // Work experience keywords
+            .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
+            // Employment types
+            .and(UserSpecification.hasEmploymentTypes(empTypes));
 
         if (username != null && !username.isEmpty()) {
             String un = username.trim();
