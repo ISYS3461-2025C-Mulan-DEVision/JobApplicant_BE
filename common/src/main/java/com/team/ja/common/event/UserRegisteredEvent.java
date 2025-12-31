@@ -1,12 +1,11 @@
 package com.team.ja.common.event;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Event published when a new user registers.
@@ -39,9 +38,28 @@ public class UserRegisteredEvent {
     private String lastName;
 
     /**
+     * Country abbreviation (2-letter), mandatory at registration.
+     */
+    private String countryAbbreviation;
+
+    /**
+     * Optional phone number.
+     */
+    private String phone;
+
+    /**
+     * Optional street address (name/number).
+     */
+    private String address;
+
+    /**
+     * Optional city name.
+     */
+    private String city;
+
+    /**
      * Timestamp when registration occurred.
      */
     @Builder.Default
     private LocalDateTime registeredAt = LocalDateTime.now();
 }
-

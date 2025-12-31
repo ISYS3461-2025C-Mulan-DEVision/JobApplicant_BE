@@ -26,9 +26,19 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
-    @Pattern(regexp = "^(?=.*[A-Z])(?=.*[0-9])(?=.*[$#@!]).{8,}$", message = "Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character ($#@!)")
-    @Schema(description = "User's password (min 8 characters, 1 uppercase, 1 number, 1 special char)", example = "SecureP@ss123")
+    @Size(
+        min = 8,
+        max = 100,
+        message = "Password must be between 8 and 100 characters"
+    )
+    @Pattern(
+        regexp = "^(?=.*[A-Z])(?=.*[0-9])(?=.*[$#@!]).{8,}$",
+        message = "Password must be at least 8 characters long and contain at least one uppercase letter, one number, and one special character ($#@!)"
+    )
+    @Schema(
+        description = "User's password (min 8 characters, 1 uppercase, 1 number, 1 special char)",
+        example = "SecureP@ss123"
+    )
     private String password;
 
     @NotBlank(message = "First name is required")
@@ -40,5 +50,28 @@ public class RegisterRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     @Schema(description = "User's last name", example = "Doe")
     private String lastName;
-}
 
+    @NotBlank(message = "Country is required")
+    @Size(
+        min = 2,
+        max = 3,
+        message = "Country abbreviation must be 2-3 characters"
+    )
+    @Schema(description = "Country abbreviation (2-letter)", example = "US")
+    private String country;
+
+    @Size(max = 20, message = "Phone must not exceed 20 characters")
+    @Schema(description = "Phone number", example = "+84123456789")
+    private String phone;
+
+    @Size(max = 255, message = "Address must not exceed 255 characters")
+    @Schema(
+        description = "Street address (name/number)",
+        example = "123 Nguyen Hue Street"
+    )
+    private String address;
+
+    @Size(max = 100, message = "City must not exceed 100 characters")
+    @Schema(description = "City name", example = "Ho Chi Minh City")
+    private String city;
+}

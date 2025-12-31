@@ -1,13 +1,12 @@
 package com.team.ja.user.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * User response DTO.
@@ -37,6 +36,15 @@ public class UserResponse {
     @Schema(description = "User's phone number", example = "+84901234567")
     private String phone;
 
+    @Schema(
+        description = "Street address (name/number)",
+        example = "123 Nguyen Hue Street"
+    )
+    private String address;
+
+    @Schema(description = "User's city", example = "Ho Chi Minh City")
+    private String city;
+
     @Schema(description = "User's objective summary")
     private String objectiveSummary;
 
@@ -59,4 +67,3 @@ public class UserResponse {
     @Schema(description = "User's country")
     private CountryResponse country;
 }
-

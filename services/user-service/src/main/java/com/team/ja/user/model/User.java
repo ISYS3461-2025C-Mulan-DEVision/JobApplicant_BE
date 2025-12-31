@@ -7,6 +7,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,14 +18,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-
 /**
  * User entity representing a job seeker profile.
- * 
+ *
  * Inherits from BaseEntity:
  * - id, createdAt, updatedAt
  * - isActive, deactivatedAt (for soft delete)
@@ -50,6 +49,12 @@ public class User extends BaseEntity {
     @Column(name = "country_id")
     private UUID countryId;
 
+    @Column(length = 255)
+    private String address;
+
+    @Column(length = 100)
+    private String city;
+
     @Column(columnDefinition = "TEXT")
     private String objectiveSummary;
 
@@ -66,14 +71,29 @@ public class User extends BaseEntity {
     /**
      * Full-text search vector for efficient searching.
      */
-    @Column(name = "fts_document", columnDefinition = "tsvector", insertable = false, updatable = false)
+    @Column(
+        name = "fts_document",
+        columnDefinition = "tsvector",
+        insertable = false,
+        updatable = false
+    )
     private String ftsDocument;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(
+        mappedBy = "user",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
     @Builder.Default
     private Set<UserSkill> userSkills = new HashSet<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OneToMany(
+        mappedBy = "user",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
     @Builder.Default
     private Set<UserPortfolioItem> portfolioItems = new HashSet<>();
 
