@@ -240,6 +240,13 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
+        // Check auth provider
+        if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+            throw new com.team.ja.common.exception.BadRequestException(
+                "This account is registered via " + credential.getAuthProvider() + ". Please login using that provider."
+            );
+        }
+
         try {
             // Authenticate user
             authenticationManager.authenticate(
