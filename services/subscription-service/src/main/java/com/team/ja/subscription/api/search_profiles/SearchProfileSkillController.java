@@ -1,6 +1,7 @@
 package com.team.ja.subscription.api.search_profiles;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.subscription.dto.request.CreateSearchProfileSkillRequest;
 import com.team.ja.subscription.dto.request.UpdateSearchProfileSkillRequest;
 import com.team.ja.subscription.dto.response.SearchProfileSkillResponse;
@@ -29,7 +30,9 @@ public class SearchProfileSkillController {
     @Operation(summary = "Add skill to search profile")
     public ApiResponse<SearchProfileSkillResponse> createSkill(
             @Parameter(description = "User ID") @PathVariable UUID userId,
-            @Valid @RequestBody CreateSearchProfileSkillRequest request) {
+            @Valid @RequestBody CreateSearchProfileSkillRequest request,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success("Skill added", searchProfileSkillService.createSkill(userId, request));
     }
 
@@ -44,7 +47,9 @@ public class SearchProfileSkillController {
     @Operation(summary = "Get skill by id")
     public ApiResponse<SearchProfileSkillResponse> getSkillById(
             @Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Skill record ID") @PathVariable UUID id) {
+            @Parameter(description = "Skill record ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(searchProfileSkillService.getSkillById(userId, id));
     }
 
@@ -53,7 +58,9 @@ public class SearchProfileSkillController {
     public ApiResponse<SearchProfileSkillResponse> updateSkill(
             @Parameter(description = "User ID") @PathVariable UUID userId,
             @Parameter(description = "Skill record ID") @PathVariable UUID id,
-            @Valid @RequestBody UpdateSearchProfileSkillRequest request) {
+            @Valid @RequestBody UpdateSearchProfileSkillRequest request,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success("Skill updated", searchProfileSkillService.updateSkill(userId, id, request));
     }
 
@@ -61,8 +68,17 @@ public class SearchProfileSkillController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete skill from profile")
     public ApiResponse<Void> deleteSkill(@Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Skill record ID") @PathVariable UUID id) {
+            @Parameter(description = "Skill record ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         searchProfileSkillService.deleteSkill(userId, id);
         return ApiResponse.success("Skill deleted", null);
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 }

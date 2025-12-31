@@ -10,6 +10,12 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Consumer for handling user registration events to create default search
+ * profiles.
+ * When a new user registers, this consumer listens for the event and creates
+ * a default search profile for them in the subscription service.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor

@@ -1,6 +1,7 @@
 package com.team.ja.subscription.api.search_profiles;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.subscription.dto.request.CreateSearchProfileEmploymentRequest;
 import com.team.ja.subscription.dto.request.UpdateSearchProfileEmploymentRequest;
 import com.team.ja.subscription.dto.response.SearchProfileEmploymentResponse;
@@ -45,7 +46,9 @@ public class SearchProfileEmploymentController {
     @Operation(summary = "Get employment by id")
     public ApiResponse<SearchProfileEmploymentResponse> getEmploymentById(
             @Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Employment record ID") @PathVariable UUID id) {
+            @Parameter(description = "Employment record ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(searchProfileEmploymentService.getEmploymentById(userId, id));
     }
 
@@ -54,7 +57,9 @@ public class SearchProfileEmploymentController {
     public ApiResponse<SearchProfileEmploymentResponse> updateEmployment(
             @Parameter(description = "User ID") @PathVariable UUID userId,
             @Parameter(description = "Employment record ID") @PathVariable UUID id,
-            @Valid @RequestBody UpdateSearchProfileEmploymentRequest request) {
+            @Valid @RequestBody UpdateSearchProfileEmploymentRequest request,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success("Employment updated",
                 searchProfileEmploymentService.updateEmployment(userId, id, request));
     }
@@ -63,8 +68,17 @@ public class SearchProfileEmploymentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete employment from profile")
     public ApiResponse<Void> deleteEmployment(@Parameter(description = "User ID") @PathVariable UUID userId,
-            @Parameter(description = "Employment record ID") @PathVariable UUID id) {
+            @Parameter(description = "Employment record ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         searchProfileEmploymentService.deleteEmployment(userId, id);
         return ApiResponse.success("Employment deleted", null);
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 }

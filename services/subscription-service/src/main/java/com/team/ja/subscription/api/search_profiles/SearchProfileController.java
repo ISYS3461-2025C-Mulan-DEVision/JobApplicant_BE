@@ -4,10 +4,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.common.exception.ForbiddenException;
 import com.team.ja.subscription.dto.response.SearchProfileResponse;
 import com.team.ja.subscription.service.SearchProfileService;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.team.ja.subscription.dto.request.UpdateSearchProfileRequest;
 
@@ -37,15 +40,26 @@ public class SearchProfileController {
      */
     @GetMapping("/{userId}/preferences")
     @Operation(summary = "Get search profile by user ID", description = "Retrieve the search profile associated with the specified user ID.")
-    public ApiResponse<Optional<SearchProfileResponse>> getSearchProfileByUserId(@PathVariable("userId") UUID userId) {
+    public ApiResponse<Optional<SearchProfileResponse>> getSearchProfileByUserId(@PathVariable("userId") UUID userId,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(searchProfileService.getByUserId(userId));
     }
 
     @PutMapping("/{userId}/preferences")
     @Operation(summary = "Update search profile by user ID", description = "Update the search profile associated with the specified user ID.")
     public ApiResponse<Optional<SearchProfileResponse>> updateSearchProfile(@PathVariable("userId") UUID userId,
-            @RequestBody UpdateSearchProfileRequest request) {
+            @RequestBody UpdateSearchProfileRequest request,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
+        authorize(userId, authUserId);
         return ApiResponse.success(searchProfileService.update(userId, request));
+    }
+
+    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+        UUID authUserId = UUID.fromString(authUserIdStr);
+        if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException("You are not authorized to access this resource.");
+        }
     }
 
 }

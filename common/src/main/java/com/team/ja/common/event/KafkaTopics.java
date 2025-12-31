@@ -44,5 +44,41 @@ public final class KafkaTopics {
      * Consumer: notification-service
      */
     public static final String APPLICATION_SUBMITTED = "application-submitted";
-}
 
+    /**
+     * Topic for user search profile update events.
+     * Producer: user-service
+     * Consumer: subscription-service
+     */
+    public static final String USER_SEARCH_PROFILE_UPDATED = "user-search-profile-updated";
+
+    /**
+     * Topic for payment request.
+     * Producer: subscription-service
+     * Consumer: jm-payment-service
+     */
+    public static final String APPLICANT_PAYMENT_REQUEST = "applicant-payment-request";
+
+    /**
+     * Topic for payment response.
+     * Producer: jm-payment-service
+     * Consumer: subscription-service
+     */
+    public static final String APPLICANT_PAYMENT_RESPONSE = "applicant-payment-response";
+
+    /**
+     * Topic for enabling user premium status.
+     * Producer: subscription-service
+     * Consumer: user-service, auth-service
+     */
+    public static final String USER_PREMIUM_ENABLED = "user-premium-enabled";
+
+    /**
+     * Topic for job posted matched events.
+     * 
+     * NOTE: Only for premium users.
+     * Producer: subscription-service
+     * Consumer: notification-service
+     */
+    public static final String JOB_POSTED_MATCHED = "job-posted-matched";
+}
