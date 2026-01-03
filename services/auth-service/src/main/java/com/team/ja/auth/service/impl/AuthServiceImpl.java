@@ -12,6 +12,7 @@ import com.team.ja.auth.repository.VerificationTokenRepository;
 import com.team.ja.auth.security.JwtService;
 import com.team.ja.auth.service.AuthService;
 import com.team.ja.auth.service.EmailService;
+import com.team.ja.auth.service.LoginAttemptService;
 import com.team.ja.auth.service.TokenBlacklistService;
 import com.team.ja.common.enumeration.Role;
 import com.team.ja.common.event.UserRegisteredEvent;
@@ -49,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRegisteredProducer userRegisteredProducer;
     private final EmailService emailService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final LoginAttemptService loginAttemptService;
 
     @Value("${jwt.access-token-expiration}")
     private long accessTokenExpiration;
@@ -216,7 +218,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for: {}", request.getEmail());
 
@@ -256,8 +258,18 @@ public class AuthServiceImpl implements AuthService {
                 )
             );
         } catch (BadCredentialsException e) {
-            // Record failed attempt
+            // Record failed attempt in Redis for the 60s window
+            int windowAttempts = loginAttemptService.incrementAttempts(request.getEmail());
+            
+            // Record failed attempt persistently in DB
             credential.recordFailedLogin();
+            
+            // If window-based attempts exceed limit, force persistent lock
+            if (windowAttempts >= 5) {
+                log.warn("Account {} locked due to too many failed attempts in a short window.", request.getEmail());
+                credential.setLockedUntil(LocalDateTime.now().plusMinutes(15));
+            }
+            
             authCredentialRepository.save(credential);
             throw new UnauthorizedException("Invalid email or password");
         }
@@ -265,6 +277,9 @@ public class AuthServiceImpl implements AuthService {
         // Record successful login
         credential.recordSuccessfulLogin();
         authCredentialRepository.save(credential);
+        
+        // Reset window counter on success
+        loginAttemptService.resetAttempts(request.getEmail());
 
         log.info("User logged in successfully: {}", request.getEmail());
 
