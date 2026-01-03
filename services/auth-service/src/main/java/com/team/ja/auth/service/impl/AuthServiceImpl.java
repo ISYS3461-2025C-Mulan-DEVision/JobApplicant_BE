@@ -218,7 +218,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = UnauthorizedException.class)
     public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for: {}", request.getEmail());
 
