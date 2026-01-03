@@ -66,4 +66,16 @@ public class UserResponse {
     // Nested objects (populated via separate queries)
     @Schema(description = "User's country")
     private CountryResponse country;
+
+    @Schema(description = "User's skills")
+    private java.util.List<SkillResponse> skills;
+
+    @Schema(description = "User's education history")
+    private java.util.List<UserEducationResponse> education;
+
+    @Schema(description = "User's work experience history")
+    private java.util.List<UserWorkExperienceResponse> workExperience;
+
+    @Schema(description = "User's portfolio items")
+    private java.util.List<UserPortfolioItemResponse> portfolioItems;
 }
