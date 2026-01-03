@@ -97,6 +97,24 @@ public class User extends BaseEntity {
     @Builder.Default
     private Set<UserPortfolioItem> portfolioItems = new HashSet<>();
 
+    @OneToMany(
+        mappedBy = "user",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private java.util.List<UserEducation> education = new java.util.ArrayList<>();
+
+    @OneToMany(
+        mappedBy = "user",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        fetch = FetchType.LAZY
+    )
+    @Builder.Default
+    private java.util.List<UserWorkExperience> workExperience = new java.util.ArrayList<>();
+
     /**
      * Get user's full name.
      */
