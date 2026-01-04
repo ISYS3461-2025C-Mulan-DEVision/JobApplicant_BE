@@ -43,6 +43,8 @@ public class UserEducationServiceImpl implements UserEducationService {
                 .institution(request.getInstitution())
                 .educationLevel(request.getEducationLevel())
                 .fieldOfStudy(request.getFieldOfStudy())
+                .degree(request.getDegree())
+                .gpa(request.getGpa())
                 .startAt(request.getStartAt())
                 .endAt(request.getEndAt())
                 .build();
@@ -70,6 +72,12 @@ public class UserEducationServiceImpl implements UserEducationService {
         }
         if (request.getFieldOfStudy() != null) {
             education.setFieldOfStudy(request.getFieldOfStudy());
+        }
+        if (request.getDegree() != null) {
+            education.setDegree(request.getDegree());
+        }
+        if (request.getGpa() != null) {
+            education.setGpa(request.getGpa());
         }
         if (request.getStartAt() != null) {
             education.setStartAt(request.getStartAt());

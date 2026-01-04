@@ -42,6 +42,12 @@ public class UserEducation extends BaseEntity {
     @Column(nullable = false)
     private String fieldOfStudy;
 
+    @Column
+    private String degree;
+
+    @Column
+    private Double gpa;
+
     @Column(name = "start_at")
     private LocalDate startAt;
 
