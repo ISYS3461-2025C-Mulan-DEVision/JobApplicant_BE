@@ -171,69 +171,69 @@ services:
   # # Kafka Infrastructure
   # # ========================================
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: ja-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    networks:
-      - ja-network
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper:7.5.0
+  #   container_name: ja-zookeeper
+  #   environment:
+  #     ZOOKEEPER_CLIENT_PORT: 2181
+  #     ZOOKEEPER_TICK_TIME: 2000
+  #   ports:
+  #     - "2181:2181"
+  #   networks:
+  #     - ja-network
+  #   healthcheck:
+  #     test: ["CMD", "nc", "-z", "localhost", "2181"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: ja-kafka
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    networks:
-      - ja-network
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "kafka-broker-api-versions",
-          "--bootstrap-server",
-          "localhost:9092",
-        ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+  # kafka:
+  #   image: confluentinc/cp-kafka:7.5.0
+  #   container_name: ja-kafka
+  #   depends_on:
+  #     zookeeper:
+  #       condition: service_healthy
+  #   ports:
+  #     - "9092:9092"
+  #     - "29092:29092"
+  #   environment:
+  #     KAFKA_BROKER_ID: 1
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+  #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  #     KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  #   networks:
+  #     - ja-network
+  #   healthcheck:
+  #     test:
+  #       [
+  #         "CMD",
+  #         "kafka-broker-api-versions",
+  #         "--bootstrap-server",
+  #         "localhost:9092",
+  #       ]
+  #     interval: 10s
+  #     timeout: 10s
+  #     retries: 5
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: ja-kafka-ui
-    depends_on:
-      kafka:
-        condition: service_healthy
-    ports:
-      - "8090:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - ja-network
+  # kafka-ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   container_name: ja-kafka-ui
+  #   depends_on:
+  #     kafka:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8090:8080"
+  #   environment:
+  #     KAFKA_CLUSTERS_0_NAME: local
+  #     KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+  #     KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+  #   networks:
+  #     - ja-network
 
   # ========================================
   # Redis
@@ -329,7 +329,12 @@ services:
       SPRING_DATASOURCE_URL: ${AUTH_SERVICE_SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${AUTH_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_SERVICE_SPRING_DATASOURCE_PASSWORD}
+      # Kafka config - use underscore format for dotted property names
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+      SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL: ${SPRING_KAFKA_SECURITY_PROTOCOL}
+      SPRING_KAFKA_PROPERTIES_SASL_MECHANISM: ${SPRING_KAFKA_SASL_MECHANISM}
+      SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG: ${SPRING_KAFKA_SASL_JAAS_CONFIG}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${AUTH_SERVICE_KAFKA_CONSUMER_GROUP}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       # JWT configuration
       JWE_SECRET: ${JWE_SECRET}
@@ -357,8 +362,8 @@ services:
     depends_on:
       auth-db:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      # kafka:
+      #   condition: service_healthy
       eureka-server:
         condition: service_healthy
     networks:
@@ -378,8 +383,12 @@ services:
       SPRING_DATASOURCE_URL: ${USER_SERVICE_SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${USER_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${USER_SERVICE_SPRING_DATASOURCE_PASSWORD}
+      # Kafka config - use underscore format for dotted property names
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-      SPRING_KAFKA_CONSUMER_GROUP: ${USER_SERVICE_KAFKA_CONSUMER_GROUP}
+      SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL: ${SPRING_KAFKA_SECURITY_PROTOCOL}
+      SPRING_KAFKA_PROPERTIES_SASL_MECHANISM: ${SPRING_KAFKA_SASL_MECHANISM}
+      SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG: ${SPRING_KAFKA_SASL_JAAS_CONFIG}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${USER_SERVICE_KAFKA_CONSUMER_GROUP}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       # S3 Storage
       AWS_S3_ENABLED: ${AWS_S3_ENABLED}
@@ -391,8 +400,8 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
-      kafka:
-        condition: service_healthy
+      # kafka:
+      #   condition: service_healthy
       eureka-server:
         condition: service_healthy
     networks:
@@ -412,8 +421,12 @@ services:
       SPRING_DATASOURCE_URL: ${APPLICATION_SERVICE_SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${APPLICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${APPLICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+      # Kafka config - use underscore format for dotted property names
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-      SPRING_KAFKA_CONSUMER_GROUP: ${APPLICATION_SERVICE_KAFKA_CONSUMER_GROUP}
+      SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL: ${SPRING_KAFKA_SECURITY_PROTOCOL}
+      SPRING_KAFKA_PROPERTIES_SASL_MECHANISM: ${SPRING_KAFKA_SASL_MECHANISM}
+      SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG: ${SPRING_KAFKA_SASL_JAAS_CONFIG}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${APPLICATION_SERVICE_KAFKA_CONSUMER_GROUP}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
       # S3 Storage
       AWS_S3_ENABLED: ${AWS_S3_ENABLED}
@@ -445,8 +458,12 @@ services:
       SPRING_DATASOURCE_URL: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_SERVICE_SPRING_DATASOURCE_PASSWORD}
+      # Kafka config - use underscore format for dotted property names
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-      SPRING_KAFKA_CONSUMER_GROUP: ${NOTIFICATION_SERVICE_KAFKA_CONSUMER_GROUP}
+      SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL: ${SPRING_KAFKA_SECURITY_PROTOCOL}
+      SPRING_KAFKA_PROPERTIES_SASL_MECHANISM: ${SPRING_KAFKA_SASL_MECHANISM}
+      SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG: ${SPRING_KAFKA_SASL_JAAS_CONFIG}
+      SPRING_KAFKA_CONSUMER_GROUP_ID: ${NOTIFICATION_SERVICE_KAFKA_CONSUMER_GROUP}
       SPRING_DATA_REDIS_HOST: ${SPRING_DATA_REDIS_HOST}
       SPRING_DATA_REDIS_PORT: ${SPRING_DATA_REDIS_PORT}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
@@ -454,8 +471,8 @@ services:
     depends_on:
       notification-db:
         condition: service_healthy
-      kafka:
-          condition: service_healthy
+      # kafka:
+      #     condition: service_healthy
       redis:
         condition: service_healthy
       eureka-server:

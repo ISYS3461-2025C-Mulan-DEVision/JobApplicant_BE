@@ -48,8 +48,8 @@ public class UserResponse {
     @Schema(description = "User's objective summary")
     private String objectiveSummary;
 
-    @Schema(description = "Whether user has uploaded an avatar")
-    private Boolean hasAvatar;
+    @Schema(description = "URL to user's avatar image")
+    private String avatarUrl;
 
     @Schema(description = "Whether user has premium subscription")
     private boolean premium;
