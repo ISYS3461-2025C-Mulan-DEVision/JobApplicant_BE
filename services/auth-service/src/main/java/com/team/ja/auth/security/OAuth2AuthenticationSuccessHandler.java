@@ -121,6 +121,10 @@ public class OAuth2AuthenticationSuccessHandler
                 targetUrl
             );
             response.sendRedirect(targetUrl);
+        } catch (com.team.ja.common.exception.ConflictException e) {
+            log.warn("OAuth2 conflict: {}", e.getMessage());
+            String targetUrl = buildFailureUrl("ACCOUNT_ALREADY_EXISTS", e.getMessage());
+            response.sendRedirect(targetUrl);
         } catch (Exception ex) {
             log.error(
                 "OAuth2 authentication success handling failed: {}",
@@ -164,6 +168,7 @@ public class OAuth2AuthenticationSuccessHandler
                 .email(info.getEmail())
                 .firstName(info.getGivenName())
                 .lastName(info.getFamilyName())
+                .countryAbbreviation(info.getCountry())
                 .build();
             userRegisteredProducer.sendUserRegisteredEvent(event);
 
@@ -174,13 +179,19 @@ public class OAuth2AuthenticationSuccessHandler
         } else {
             // Update existing user (link to Google if not already)
             credential = existingOpt.get();
+
+            // Check for provider mismatch - Do not allow overtaking LOCAL accounts or other providers
+            if (credential.getAuthProvider() != AuthProvider.GOOGLE) {
+                throw new com.team.ja.common.exception.ConflictException(
+                    "Account exists with provider " + credential.getAuthProvider() + ". Please login with that provider."
+                );
+            }
+
             credential.setLastLoginAt(LocalDateTime.now());
             credential.setEmailVerified(
                 credential.isEmailVerified() || info.isEmailVerified()
             );
 
-            // If credential was LOCAL or different provider, set to GOOGLE and save provider id
-            credential.setAuthProvider(AuthProvider.GOOGLE);
             if (StringUtils.hasText(info.getProviderId())) {
                 credential.setProviderId(info.getProviderId());
             }
@@ -221,13 +232,21 @@ public class OAuth2AuthenticationSuccessHandler
     }
 
     private String buildFailureUrl(String errorCode) {
+        return buildFailureUrl(errorCode, null);
+    }
+
+    private String buildFailureUrl(String errorCode, String description) {
         List<String> allowed = parseAuthorizedRedirectUris();
         String base = resolveRedirectBase(null, allowed);
-        return UriComponentsBuilder.fromUriString(base)
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(base)
             .queryParam("status", "failure")
-            .queryParam("error", errorCode)
-            .build()
-            .toUriString();
+            .queryParam("error", errorCode);
+        
+        if (StringUtils.hasText(description)) {
+            builder.queryParam("errorDescription", description);
+        }
+        
+        return builder.build().toUriString();
     }
 
     private String resolveRedirectBase(
@@ -335,6 +354,20 @@ public class OAuth2AuthenticationSuccessHandler
         // Names
         String givenName = getString(attrs, "given_name");
         String familyName = getString(attrs, "family_name");
+        
+        // Country from Locale
+        String country = null;
+        String locale = getString(attrs, "locale");
+        if (StringUtils.hasText(locale)) {
+            // Examples: "en-US", "en_US"
+            if (locale.contains("-")) {
+                String[] parts = locale.split("-");
+                if (parts.length > 1) country = parts[1].toUpperCase();
+            } else if (locale.contains("_")) {
+                String[] parts = locale.split("_");
+                if (parts.length > 1) country = parts[1].toUpperCase();
+            }
+        }
 
         if (oauth2User instanceof OidcUser oidc) {
             if (!StringUtils.hasText(email)) {
@@ -384,7 +417,8 @@ public class OAuth2AuthenticationSuccessHandler
             emailVerified,
             providerId,
             givenName,
-            familyName
+            familyName,
+            country
         );
     }
 
@@ -409,5 +443,6 @@ public class OAuth2AuthenticationSuccessHandler
         private final String providerId;
         private final String givenName;
         private final String familyName;
+        private final String country;
     }
 }
