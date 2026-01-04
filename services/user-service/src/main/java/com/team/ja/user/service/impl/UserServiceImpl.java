@@ -5,7 +5,6 @@ import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.BadRequestException;
 import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
-import com.team.ja.common.exception.StorageException;
 import com.team.ja.user.config.S3FileService;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
@@ -20,7 +19,6 @@ import com.team.ja.user.mapper.SkillMapper;
 import com.team.ja.user.mapper.UserEducationMapper;
 import com.team.ja.user.mapper.UserMapper;
 import com.team.ja.user.mapper.UserWorkExperienceMapper;
-import java.io.InputStream;
 import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
@@ -218,21 +216,10 @@ public class UserServiceImpl implements UserService {
                 Scalr.OP_ANTIALIAS
             );
 
-            // Convert to RGB (remove alpha channel) for JPEG compatibility
-            BufferedImage rgbImage = new BufferedImage(AVATAR_SIZE, AVATAR_SIZE, BufferedImage.TYPE_INT_RGB);
-            rgbImage.createGraphics().drawImage(resizedImage, 0, 0, null);
-            
-            // Save as JPEG format
             ByteArrayOutputStream os = new ByteArrayOutputStream();
-            boolean written = ImageIO.write(rgbImage, "jpeg", os);
-            log.info("ImageIO.write result: {}, format: jpeg", written);
-            
+            String format = file.getContentType().split("/")[1];
+            ImageIO.write(resizedImage, format, os);
             byte[] imageBytes = os.toByteArray();
-            log.info("Avatar image bytes size: {} bytes", imageBytes.length);
-            
-            if (imageBytes.length == 0) {
-                throw new BadRequestException("Failed to encode image - no bytes written");
-            }
 
             if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
                 s3FileService.deleteFile(user.getAvatarUrl());
@@ -261,26 +248,6 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    @Override
-    public InputStream downloadAvatar(UUID userId) {
-        log.info("Downloading avatar for user {}", userId);
-        
-        User user = userRepository.findById(userId)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-        
-        if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
-            throw new NotFoundException("Avatar not found for user " + userId);
-        }
-        
-        try {
-            return s3FileService.downloadFile(user.getAvatarUrl());
-        } catch (Exception e) {
-            log.error("Failed to download avatar for user {}: {}", userId, e.getMessage(), e);
-            throw new StorageException("Failed to download avatar file", e);
-        }
-    }
-    
     @Override
     public UserResponse getUserById(UUID id) {
         log.info("Fetching user by ID: {}", id);

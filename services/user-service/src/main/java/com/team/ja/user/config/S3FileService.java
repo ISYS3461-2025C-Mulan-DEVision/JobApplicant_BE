@@ -2,7 +2,6 @@ package com.team.ja.user.config;
 
 import com.team.ja.common.config.S3Configuration;
 import com.team.ja.common.exception.StorageException;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.UUID;
@@ -11,12 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
@@ -74,41 +70,6 @@ public class S3FileService {
         } catch (Exception e) {
             log.error("Error deleting file from S3: {}", e.getMessage(), e);
             throw new StorageException("Failed to delete file from S3", e);
-        }
-    }
-
-    /**
-     * Download file from S3 using internal file URL.
-     * 
-     * @param fileUrl The internal S3 file URL
-     * @return InputStream containing the file data
-     */
-    public InputStream downloadFile(String fileUrl) {
-        if (fileUrl == null || fileUrl.isEmpty()) {
-            throw new IllegalArgumentException("File URL cannot be empty");
-        }
-        
-        try {
-            String key = extractKeyFromUrl(fileUrl);
-            log.info("Downloading file from S3 - bucket: {}, key: {}", bucketName, key);
-            
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build();
-            
-            ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
-            
-            // Read into byte array to close S3 response stream
-            byte[] fileBytes = s3Object.readAllBytes();
-            s3Object.close();
-            
-            log.info("File downloaded successfully from S3: {}", key);
-            return new ByteArrayInputStream(fileBytes);
-            
-        } catch (Exception e) {
-            log.error("Error downloading file from S3: {}", e.getMessage(), e);
-            throw new StorageException("Failed to download file from S3: " + e.getMessage(), e);
         }
     }
 

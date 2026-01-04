@@ -49,15 +49,6 @@ public interface UserService {
     );
 
     /**
-     * Download user avatar file.
-     * Only the user themselves can download their avatar.
-     * 
-     * @param userId User ID
-     * @return InputStream containing the avatar image file
-     */
-    java.io.InputStream downloadAvatar(UUID userId);
-
-    /**
      * Get user by ID.
      *
      * @param id User ID

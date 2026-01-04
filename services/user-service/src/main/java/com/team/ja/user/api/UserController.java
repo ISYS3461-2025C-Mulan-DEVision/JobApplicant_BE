@@ -15,17 +15,10 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.InputStream;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * REST controller for User operations.
@@ -198,24 +191,6 @@ public class UserController {
         authorize(id, authUserIdStr);
         UserResponse response = userService.uploadAvatar(id, file);
         return ApiResponse.success("Avatar uploaded successfully", response);
-    }
-
-    @GetMapping("/{id}/avatar")
-    @Operation(summary = "Download avatar", description = "Download user's avatar image")
-    public ResponseEntity<InputStreamResource> downloadAvatar(
-            @Parameter(description = "User ID") @PathVariable UUID id,
-            @Parameter(description = "Authenticated User ID from JWT") @RequestHeader("X-User-Id") String authUserIdStr) {
-        
-        authorize(id, authUserIdStr);
-        InputStream avatarStream = userService.downloadAvatar(id);
-        
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.IMAGE_JPEG); // JPEG format
-        headers.setContentDispositionFormData("inline", "avatar.jpg");
-        
-        return ResponseEntity.ok()
-                .headers(headers)
-                .body(new InputStreamResource(avatarStream));
     }
 
     @DeleteMapping("/{id}")
