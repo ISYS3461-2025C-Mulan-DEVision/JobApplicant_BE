@@ -10,10 +10,10 @@
 | Property | Value |
 |----------|-------|
 | **Endpoint** | `POST /api/v1/applications` |
-| **Description** | Submit a new job application with resume, cover letter, and optional files |
+| **Description** | Submit a new job application with resume and cover letter files |
 | **Path Parameters** | None |
 | **Query Parameters** | None |
-| **Request Body** | `jobPostId` (UUID), `resumeFile` (File), `coverLetterFile` (File optional), `additionalFiles` (File[] optional) |
+| **Request Body** | `jobPostId` (UUID), `resumeFile` (File), `coverLetterFile` (File) |
 
 ### 2. Get User's Applications
 | Property | Value |
@@ -54,11 +54,13 @@
 ### 6. Download Application Files
 | Property | Value |
 |----------|-------|
-| **Endpoint** | `GET /api/v1/applications/{applicationId}/files/{fileType}` |
-| **Description** | Download resume, cover letter, or additional files |
-| **Path Parameters** | `applicationId` (UUID), `fileType` (String: resume, coverLetter, additional_0, etc) |
+| **Endpoint** | `GET /api/v1/applications/{applicationId}/files/{docType}` |
+| **Description** | Download resume or cover letter files as binary stream (inline preview or download) |
+| **Path Parameters** | `applicationId` (UUID), `docType` (DocType Enum: RESUME, COVER_LETTER) |
 | **Query Parameters** | None |
 | **Request Body** | None |
+| **Response** | Binary file stream (PDF/DOC), inline display or attachment download |
+| **Authentication** | JWT Token Required, User must own the application |
 
 ---
 

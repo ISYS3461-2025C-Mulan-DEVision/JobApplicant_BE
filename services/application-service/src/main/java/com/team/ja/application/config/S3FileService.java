@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.UUID;
 
 /**
@@ -97,6 +98,38 @@ public class S3FileService {
     }
 
     /**
+     * Download a file from S3 and return its content as byte array.
+     *
+     * @param fileUrl The URL of the file to download
+     * @return Byte array of the file content
+     */
+    public byte[] downloadFile(String fileUrl) throws IOException {
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            throw new IllegalArgumentException("File URL cannot be empty");
+        }
+
+        try {
+            // Extract key from URL
+            String key = extractKeyFromUrl(fileUrl);
+
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(key)
+                    .build();
+
+            InputStream inputStream = s3Client.getObject(getObjectRequest);
+            byte[] fileContent = inputStream.readAllBytes();
+            inputStream.close();
+
+            log.info("File downloaded successfully: {}", key);
+            return fileContent;
+        } catch (Exception e) {
+            log.error("Error downloading file from S3: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to download file from S3", e);
+        }
+    }
+
+    /**
      * Generate a unique filename to avoid conflicts.
      */
     private String generateUniqueFileName(String originalFileName) {
@@ -132,13 +165,36 @@ public class S3FileService {
 
     /**
      * Extract S3 key from file URL.
+     * URL format: http://seaweedfs:8333/bucket-name/folder/file.pdf
+     * Returns: folder/file.pdf (without bucket name)
      */
     private String extractKeyFromUrl(String fileUrl) {
-        // Remove bucket and domain info to get the key
-        String[] parts = fileUrl.split("/", 4);
-        if (parts.length >= 4) {
-            return parts[3];
+        try {
+            // Split URL by "/" to extract parts
+            String[] parts = fileUrl.split("/");
+            
+            // parts[0] = "http:"
+            // parts[1] = ""
+            // parts[2] = "seaweedfs:8333"
+            // parts[3] = bucket name
+            // parts[4+] = actual key path
+            
+            if (parts.length > 4) {
+                // Reconstruct the key path starting from index 4 (skip bucket name)
+                StringBuilder keyBuilder = new StringBuilder();
+                for (int i = 4; i < parts.length; i++) {
+                    if (i > 4) keyBuilder.append("/");
+                    keyBuilder.append(parts[i]);
+                }
+                return keyBuilder.toString();
+            }
+            
+            // Fallback if URL format is unexpected
+            log.warn("Unexpected URL format: {}", fileUrl);
+            return fileUrl;
+        } catch (Exception e) {
+            log.error("Error extracting key from URL: {}", fileUrl, e);
+            return fileUrl;
         }
-        return fileUrl;
     }
 }
