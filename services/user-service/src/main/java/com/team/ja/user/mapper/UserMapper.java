@@ -14,7 +14,7 @@ import java.util.List;
 public interface UserMapper {
 
     @Mapping(target = "fullName", expression = "java(user.getFullName())")
-    @Mapping(target = "avatarUrl", source = "avatarUrl")
+    @Mapping(target = "hasAvatar", expression = "java(user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty())")
     @Mapping(target = "country", ignore = true)  // Set manually in service via CountryMapper
     UserResponse toResponse(User user);
 

@@ -47,6 +47,15 @@ public interface UserService {
     UserResponse uploadAvatar(UUID userId, org.springframework.web.multipart.MultipartFile file);
 
     /**
+     * Download user avatar file.
+     * Only the user themselves can download their avatar.
+     * 
+     * @param userId User ID
+     * @return InputStream containing the avatar image file
+     */
+    java.io.InputStream downloadAvatar(UUID userId);
+
+    /**
      * Get user by ID.
      * 
      * @param id User ID
