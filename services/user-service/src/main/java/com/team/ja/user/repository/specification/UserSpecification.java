@@ -2,12 +2,13 @@ package com.team.ja.user.repository.specification;
 
 import com.team.ja.common.enumeration.EducationLevel;
 import com.team.ja.common.enumeration.EmploymentType;
-import com.team.ja.user.model.Country;
-import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.model.UserWorkExperience;
+import com.team.ja.user.model.Country;
+import com.team.ja.user.model.Skill;
+
 import jakarta.persistence.criteria.*;
 import java.util.List;
 import java.util.UUID;
@@ -27,10 +28,10 @@ public class UserSpecification {
             }
             // Normalize input to lowercase
             List<String> lowered = skills
-                .stream()
-                .filter(StringUtils::hasText)
-                .map(s -> s.toLowerCase().trim())
-                .toList();
+                    .stream()
+                    .filter(StringUtils::hasText)
+                    .map(s -> s.toLowerCase().trim())
+                    .toList();
 
             // Join User -> UserSkill -> Skill
             Join<User, UserSkill> userSkillJoin = root.join("userSkills");
@@ -65,7 +66,8 @@ public class UserSpecification {
 
     /**
      * Case-insensitive country match by name or abbreviation, using a subquery.
-     * Useful when the caller only has a country string (e.g., from keyword) instead of a UUID.
+     * Useful when the caller only has a country string (e.g., from keyword) instead
+     * of a UUID.
      */
     public static Specification<User> hasCountryByText(String countryText) {
         return (root, query, cb) -> {
@@ -74,22 +76,20 @@ public class UserSpecification {
             }
             String lowered = countryText.trim().toLowerCase();
 
-            // Subquery to fetch country IDs that match by name or abbreviation (case-insensitive)
+            // Subquery to fetch country IDs that match by name or abbreviation
+            // (case-insensitive)
             Subquery<UUID> countryIdSubquery = query.subquery(UUID.class);
             Root<Country> countryRoot = countryIdSubquery.from(Country.class);
             Expression<String> nameLower = cb.lower(countryRoot.get("name"));
             Expression<String> abbrLower = cb.lower(
-                countryRoot.get("abbreviation")
-            );
+                    countryRoot.get("abbreviation"));
 
             countryIdSubquery
-                .select(countryRoot.get("id"))
-                .where(
-                    cb.or(
-                        cb.equal(nameLower, lowered),
-                        cb.equal(abbrLower, lowered)
-                    )
-                );
+                    .select(countryRoot.get("id"))
+                    .where(
+                            cb.or(
+                                    cb.equal(nameLower, lowered),
+                                    cb.equal(abbrLower, lowered)));
 
             // Match user's countryId against the subquery results
             return root.get("countryId").in(countryIdSubquery);
@@ -110,17 +110,19 @@ public class UserSpecification {
     }
 
     /**
-     * Case-insensitive work experience keyword match across jobTitle, description, and companyName.
-     * Accepts CSV of keywords. Matches if any keyword is found in any work experience of the user.
+     * Case-insensitive work experience keyword match across jobTitle, description,
+     * and companyName.
+     * Accepts CSV of keywords. Matches if any keyword is found in any work
+     * experience of the user.
      */
     public static Specification<User> hasWorkExperienceKeywords(
-        List<String> keywords
-    ) {
+            List<String> keywords) {
         return (root, query, cb) -> {
             if (keywords == null || keywords.isEmpty()) {
                 return cb.conjunction();
             }
-            // Build an EXISTS subquery on UserWorkExperience(userId = user.id AND keyword matches)
+            // Build an EXISTS subquery on UserWorkExperience(userId = user.id AND keyword
+            // matches)
             Subquery<UUID> sub = query.subquery(UUID.class);
             Root<UserWorkExperience> uwe = sub.from(UserWorkExperience.class);
 
@@ -130,36 +132,34 @@ public class UserSpecification {
 
             Predicate keywordOr = cb.disjunction();
             for (String kw : keywords) {
-                if (!StringUtils.hasText(kw)) continue;
+                if (!StringUtils.hasText(kw))
+                    continue;
                 String t = kw.trim().toLowerCase();
                 String pattern = "%" + t + "%";
                 keywordOr = cb.or(
-                    keywordOr,
-                    cb.like(titleLower, pattern),
-                    cb.like(descLower, pattern),
-                    cb.like(companyLower, pattern)
-                );
+                        keywordOr,
+                        cb.like(titleLower, pattern),
+                        cb.like(descLower, pattern),
+                        cb.like(companyLower, pattern));
             }
 
             sub
-                .select(uwe.get("userId"))
-                .where(
-                    cb.and(
-                        cb.equal(uwe.get("userId"), root.get("id")),
-                        keywordOr
-                    )
-                );
+                    .select(uwe.get("userId"))
+                    .where(
+                            cb.and(
+                                    cb.equal(uwe.get("userId"), root.get("id")),
+                                    keywordOr));
             return cb.exists(sub);
         };
     }
 
     /**
-     * Filter users that have at least one work experience with employmentType in given list.
+     * Filter users that have at least one work experience with employmentType in
+     * given list.
      * Accepts multiple employment types.
      */
     public static Specification<User> hasEmploymentTypes(
-        List<EmploymentType> types
-    ) {
+            List<EmploymentType> types) {
         return (root, query, cb) -> {
             if (types == null || types.isEmpty()) {
                 return cb.conjunction();
@@ -167,18 +167,15 @@ public class UserSpecification {
             Subquery<UUID> sub = query.subquery(UUID.class);
             Root<UserWorkExperience> uwe = sub.from(UserWorkExperience.class);
             CriteriaBuilder.In<EmploymentType> inClause = cb.in(
-                uwe.get("employmentType")
-            );
+                    uwe.get("employmentType"));
             types.forEach(inClause::value);
 
             sub
-                .select(uwe.get("userId"))
-                .where(
-                    cb.and(
-                        cb.equal(uwe.get("userId"), root.get("id")),
-                        inClause
-                    )
-                );
+                    .select(uwe.get("userId"))
+                    .where(
+                            cb.and(
+                                    cb.equal(uwe.get("userId"), root.get("id")),
+                                    inClause));
             return cb.exists(sub);
         };
     }
@@ -195,13 +192,11 @@ public class UserSpecification {
             Root<UserEducation> ue = sub.from(UserEducation.class);
 
             sub
-                .select(ue.get("userId"))
-                .where(
-                    cb.and(
-                        cb.equal(ue.get("userId"), root.get("id")),
-                        cb.equal(ue.get("educationLevel"), level)
-                    )
-                );
+                    .select(ue.get("userId"))
+                    .where(
+                            cb.and(
+                                    cb.equal(ue.get("userId"), root.get("id")),
+                                    cb.equal(ue.get("educationLevel"), level)));
             return cb.exists(sub);
         };
     }
@@ -221,24 +216,23 @@ public class UserSpecification {
 
             Expression<String> firstNameLower = cb.lower(root.get("firstName"));
             Expression<String> lastNameLower = cb.lower(root.get("lastName"));
-            // Build a lowercased fullName expression: lower(concat(concat(firstName, ' '), lastName))
+            // Build a lowercased fullName expression: lower(concat(concat(firstName, ' '),
+            // lastName))
             Expression<String> fullNameLower = cb.lower(
-                cb.concat(
-                    cb.concat(root.get("firstName"), cb.literal(" ")),
-                    root.get("lastName")
-                )
-            );
+                    cb.concat(
+                            cb.concat(root.get("firstName"), cb.literal(" ")),
+                            root.get("lastName")));
 
             for (String term : terms) {
-                if (!StringUtils.hasText(term)) continue;
+                if (!StringUtils.hasText(term))
+                    continue;
                 String t = term.trim().toLowerCase();
                 String pattern = "%" + t + "%";
                 combined = cb.or(
-                    combined,
-                    cb.like(firstNameLower, pattern),
-                    cb.like(lastNameLower, pattern),
-                    cb.like(fullNameLower, pattern)
-                );
+                        combined,
+                        cb.like(firstNameLower, pattern),
+                        cb.like(lastNameLower, pattern),
+                        cb.like(fullNameLower, pattern));
             }
             return combined;
         };

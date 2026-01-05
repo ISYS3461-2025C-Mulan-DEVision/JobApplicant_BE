@@ -16,4 +16,3 @@ public interface SkillMapper {
 
     List<SkillResponse> toResponseList(List<Skill> skills);
 }
-

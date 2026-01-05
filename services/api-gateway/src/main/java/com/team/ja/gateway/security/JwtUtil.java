@@ -71,6 +71,10 @@ public class JwtUtil {
         return extractAllClaims(jweString).getSubject();
     }
 
+    public String extrachCountry(String jweString) {
+        return extractAllClaims(jweString).get("country", String.class);
+    }
+
     public String extractRole(String jweString) {
         return extractAllClaims(jweString).get("role", String.class);
     }
@@ -110,5 +114,3 @@ public class JwtUtil {
         return new SecretKeySpec(keyBytes, "AES");
     }
 }
-
-

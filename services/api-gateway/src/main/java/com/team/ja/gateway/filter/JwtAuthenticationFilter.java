@@ -33,7 +33,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
-            
+
             // Check if Authorization header exists
             if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
                 log.warn("No Authorization header found");
@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             }
 
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            
+
             // Check Bearer prefix
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 log.warn("Invalid Authorization header format");
@@ -60,8 +60,9 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             String userId = jwtUtil.extractUserId(token);
             String username = jwtUtil.extractUsername(token);
             String role = jwtUtil.extractRole(token);
+            String country = jwtUtil.extrachCountry(token);
 
-            log.debug("Authenticated user: {} ({}), role: {}", username, userId, role);
+            log.debug("Authenticated user: {} ({}), role: {}, country: {}", username, userId, role, country);
 
             // Add user info to request headers for downstream services
             ServerHttpRequest modifiedRequest = request.mutate()
@@ -78,10 +79,10 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().add("Content-Type", "application/json");
-        
-        String body = String.format("{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d}", 
+
+        String body = String.format("{\"error\":\"%s\",\"message\":\"%s\",\"status\":%d}",
                 status.getReasonPhrase(), message, status.value());
-        
+
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes())));
     }
 
@@ -89,4 +90,3 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
         // Configuration properties can be added here if needed
     }
 }
-

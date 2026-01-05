@@ -1,6 +1,7 @@
 package com.team.ja.user.model;
 
 import com.team.ja.common.entity.BaseEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -20,13 +21,8 @@ import java.util.UUID;
  * Links users to their skills (many-to-many relationship).
  */
 @Entity
-@Table(
-    name = "user_skills",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uk_user_skill",
-        columnNames = {"user_id", "skill_id"}
-    )
-)
+@Table(name = "user_skills", uniqueConstraints = @UniqueConstraint(name = "uk_user_skill", columnNames = { "user_id",
+        "skill_id" }))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -48,4 +44,3 @@ public class UserSkill extends BaseEntity {
     @JoinColumn(name = "skill_id", insertable = false, updatable = false)
     private Skill skill;
 }
-

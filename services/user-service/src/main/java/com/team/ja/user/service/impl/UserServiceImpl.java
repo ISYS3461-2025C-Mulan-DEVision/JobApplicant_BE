@@ -1,11 +1,15 @@
 package com.team.ja.user.service.impl;
 
 import com.team.ja.common.dto.PageResponse;
+import com.team.ja.common.enumeration.EducationLevel;
+import com.team.ja.common.enumeration.EmploymentType;
 import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.BadRequestException;
 import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.config.S3FileService;
+import com.team.ja.user.config.sharding.ShardContext;
+import com.team.ja.user.config.sharding.ShardingProperties;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.SkillResponse;
@@ -24,27 +28,31 @@ import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.model.UserWorkExperience;
-import com.team.ja.user.repository.CountryRepository;
-import com.team.ja.user.repository.SkillRepository;
+import com.team.ja.user.model.Country;
 import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
 import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
+import com.team.ja.user.repository.global.CountryRepository;
+import com.team.ja.user.repository.global.SkillRepository;
 import com.team.ja.user.repository.specification.UserSpecification;
 import com.team.ja.user.service.UserService;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Comparator;
 import java.util.UUID;
 import javax.imageio.ImageIO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.imgscalr.Scalr;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -75,13 +83,14 @@ public class UserServiceImpl implements UserService {
     private final UserWorkExperienceMapper userWorkExperienceMapper;
     private final SkillMapper skillMapper;
     private final CountryMapper countryMapper;
+    private final ShardingProperties shardingProperties;
+    private final ShardLookupService shardLookupService;
 
     private static final int AVATAR_SIZE = 256;
     private static final List<String> SUPPORTED_IMAGE_TYPES = List.of(
-        "image/jpeg",
-        "image/png",
-        "image/gif"
-    );
+            "image/jpeg",
+            "image/png",
+            "image/gif");
 
     @Override
     @Transactional
@@ -90,35 +99,41 @@ public class UserServiceImpl implements UserService {
 
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException(
-                "User with email " + request.getEmail() + " already exists"
-            );
+                    "User with email " + request.getEmail() + " already exists");
         }
 
         if (request.getCountryId() != null) {
             countryRepository
-                .findById(request.getCountryId())
-                .orElseThrow(() ->
-                    new NotFoundException(
-                        "Country",
-                        "id",
-                        request.getCountryId().toString()
-                    )
-                );
+                    .findById(request.getCountryId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "Country",
+                            "id",
+                            request.getCountryId().toString()));
         }
 
-        User user = User.builder()
-            .email(request.getEmail())
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .phone(request.getPhone())
-            .countryId(request.getCountryId())
-            .objectiveSummary(request.getObjectiveSummary())
-            .build();
+        String country = request.getCountryId().toString();
+        String shardkey = ShardingProperties.resolveShard(country);
+        ShardContext.setShardKey(shardkey);
 
-        User savedUser = userRepository.save(user);
-        log.info("Created user with ID: {}", savedUser.getId());
+        try {
+            User user = User.builder()
+                    .email(request.getEmail())
+                    .firstName(request.getFirstName())
+                    .lastName(request.getLastName())
+                    .phone(request.getPhone())
+                    .countryId(request.getCountryId())
+                    .objectiveSummary(request.getObjectiveSummary())
+                    .build();
 
-        return mapUserWithCountry(savedUser);
+            User savedUser = userRepository.save(user);
+            log.info("Created user with ID: {}", savedUser.getId());
+
+            shardLookupService.cachedUserIdShard(user.getId(), shardkey);
+
+            return mapUserWithCountry(savedUser);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
@@ -126,62 +141,66 @@ public class UserServiceImpl implements UserService {
     public UserResponse updateUser(UUID userId, UpdateUserRequest request) {
         log.info("Updating user with ID: {}", userId);
 
-        User user = userRepository
-            .findById(userId)
-            .filter(User::isActive)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", userId.toString())
-            );
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
 
-        UUID oldCountryId = user.getCountryId();
+        try {
+            User user = userRepository
+                    .findById(userId)
+                    .filter(User::isActive)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
 
-        // Update fields if provided
-        if (request.getFirstName() != null) user.setFirstName(
-            request.getFirstName()
-        );
-        if (request.getLastName() != null) user.setLastName(
-            request.getLastName()
-        );
-        if (request.getPhone() != null) user.setPhone(request.getPhone());
-        if (request.getCountryId() != null) {
-            countryRepository
-                .findById(request.getCountryId())
-                .orElseThrow(() ->
-                    new NotFoundException(
-                        "Country",
-                        "id",
-                        request.getCountryId().toString()
-                    )
-                );
-            user.setCountryId(request.getCountryId());
+            UUID oldCountryId = user.getCountryId();
+
+            // Update fields if provided
+            if (request.getFirstName() != null)
+                user.setFirstName(
+                        request.getFirstName());
+            if (request.getLastName() != null)
+                user.setLastName(
+                        request.getLastName());
+            if (request.getPhone() != null)
+                user.setPhone(request.getPhone());
+            if (request.getCountryId() != null) {
+                countryRepository
+                        .findById(request.getCountryId())
+                        .orElseThrow(() -> new NotFoundException(
+                                "Country",
+                                "id",
+                                request.getCountryId().toString()));
+                user.setCountryId(request.getCountryId());
+            }
+            if (request.getAddress() != null)
+                user.setAddress(request.getAddress());
+            if (request.getCity() != null)
+                user.setCity(request.getCity());
+            if (request.getObjectiveSummary() != null)
+                user.setObjectiveSummary(
+                        request.getObjectiveSummary());
+
+            user.markProfileUpdated();
+            User savedUser = userRepository.save(user);
+
+            // Check if country has changed and publish event
+            if (!Objects.equals(oldCountryId, savedUser.getCountryId())) {
+                log.info(
+                        "User {} country changed from {} to {}. Publishing event.",
+                        userId,
+                        oldCountryId,
+                        savedUser.getCountryId());
+                UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
+                        .userId(userId)
+                        .updateType(UserProfileUpdatedEvent.UpdateType.COUNTRY)
+                        .countryId(savedUser.getCountryId())
+                        .build();
+                profileUpdatedProducer.sendProfileUpdatedEvent(event);
+            }
+
+            log.info("Updated user with ID: {}", savedUser.getId());
+            return mapUserWithCountry(savedUser);
+        } finally {
+            ShardContext.clear();
         }
-        if (request.getAddress() != null) user.setAddress(request.getAddress());
-        if (request.getCity() != null) user.setCity(request.getCity());
-        if (request.getObjectiveSummary() != null) user.setObjectiveSummary(
-            request.getObjectiveSummary()
-        );
-
-        user.markProfileUpdated();
-        User savedUser = userRepository.save(user);
-
-        // Check if country has changed and publish event
-        if (!Objects.equals(oldCountryId, savedUser.getCountryId())) {
-            log.info(
-                "User {} country changed from {} to {}. Publishing event.",
-                userId,
-                oldCountryId,
-                savedUser.getCountryId()
-            );
-            UserProfileUpdatedEvent event = UserProfileUpdatedEvent.builder()
-                .userId(userId)
-                .updateType(UserProfileUpdatedEvent.UpdateType.COUNTRY)
-                .countryId(savedUser.getCountryId())
-                .build();
-            profileUpdatedProducer.sendProfileUpdatedEvent(event);
-        }
-
-        log.info("Updated user with ID: {}", savedUser.getId());
-        return mapUserWithCountry(savedUser);
     }
 
     @Override
@@ -189,32 +208,31 @@ public class UserServiceImpl implements UserService {
     public UserResponse uploadAvatar(UUID userId, MultipartFile file) {
         log.info("Uploading avatar for user {}", userId);
 
-        User user = userRepository
-            .findById(userId)
-            .filter(User::isActive)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", userId.toString())
-            );
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
 
-        if (file.isEmpty()) throw new BadRequestException(
-            "File cannot be empty."
-        );
+        User user = userRepository
+                .findById(userId)
+                .filter(User::isActive)
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+
+        if (file.isEmpty())
+            throw new BadRequestException(
+                    "File cannot be empty.");
         if (!SUPPORTED_IMAGE_TYPES.contains(file.getContentType())) {
             throw new BadRequestException(
-                "Unsupported image type. Please upload a JPEG, PNG, or GIF."
-            );
+                    "Unsupported image type. Please upload a JPEG, PNG, or GIF.");
         }
 
         try {
             BufferedImage originalImage = ImageIO.read(file.getInputStream());
             BufferedImage resizedImage = Scalr.resize(
-                originalImage,
-                Scalr.Method.QUALITY,
-                Scalr.Mode.AUTOMATIC,
-                AVATAR_SIZE,
-                AVATAR_SIZE,
-                Scalr.OP_ANTIALIAS
-            );
+                    originalImage,
+                    Scalr.Method.QUALITY,
+                    Scalr.Mode.AUTOMATIC,
+                    AVATAR_SIZE,
+                    AVATAR_SIZE,
+                    Scalr.OP_ANTIALIAS);
 
             ByteArrayOutputStream os = new ByteArrayOutputStream();
             String format = file.getContentType().split("/")[1];
@@ -226,122 +244,178 @@ public class UserServiceImpl implements UserService {
             }
 
             String avatarUrl = s3FileService.uploadFile(
-                imageBytes,
-                file.getOriginalFilename(),
-                file.getContentType(),
-                "avatars"
-            );
+                    imageBytes,
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    "avatars");
 
             user.setAvatarUrl(avatarUrl);
             user.markProfileUpdated();
             User savedUser = userRepository.save(user);
 
             log.info(
-                "Successfully uploaded avatar for user {}. URL: {}",
-                userId,
-                avatarUrl
-            );
+                    "Successfully uploaded avatar for user {}. URL: {}",
+                    userId,
+                    avatarUrl);
             return mapUserWithCountry(savedUser);
         } catch (IOException e) {
             log.error("Failed to process image for user {}", userId, e);
             throw new BadRequestException("Could not process image file.");
+        } finally {
+            ShardContext.clear();
         }
     }
 
     @Override
     public UserResponse getUserById(UUID id) {
         log.info("Fetching user by ID: {}", id);
-        User user = userRepository
-            .findById(id)
-            .filter(User::isActive)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", id.toString())
-            );
-        return mapUserWithCountry(user);
+
+        String shardKey = shardLookupService.findShardIdByUserId(id);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            User user = userRepository
+                    .findById(id)
+                    .filter(User::isActive)
+                    .orElseThrow(() -> new NotFoundException("User", "id", id.toString()));
+            return mapUserWithCountry(user);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     public UserResponse getUserByEmail(String email) {
         log.info("Fetching user by email: {}", email);
-        User user = userRepository
-            .findByEmailAndIsActiveTrue(email)
-            .orElseThrow(() -> new NotFoundException("User", "email", email));
-        return mapUserWithCountry(user);
+
+        String shardKey = shardLookupService.findShardByUserEmail(email);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            User user = userRepository
+                    .findByEmailAndIsActiveTrue(email)
+                    .orElseThrow(() -> new NotFoundException("User", "email", email));
+            return mapUserWithCountry(user);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     public UserProfileResponse getUserProfile(UUID userId) {
         log.info("Fetching complete profile for user: {}", userId);
 
-        User user = userRepository
-            .findById(userId)
-            .filter(User::isActive)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", userId.toString())
-            );
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
 
-        List<UserEducation> education =
-            userEducationRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(
-                userId
-            );
-        List<UserWorkExperience> workExperience =
-            userWorkExperienceRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(
-                userId
-            );
-        List<UserSkill> userSkills =
-            userSkillRepository.findByUserIdAndIsActiveTrue(userId);
-        List<UUID> skillIds = userSkills
-            .stream()
-            .map(UserSkill::getSkillId)
-            .toList();
-        List<Skill> skills = skillIds.isEmpty()
-            ? List.of()
-            : skillRepository.findByIdInAndIsActiveTrue(skillIds);
+        try {
+            User user = userRepository
+                    .findById(userId)
+                    .filter(User::isActive)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
 
-        List<UserEducationResponse> educationResponses = education
-            .stream()
-            .map(userEducationMapper::toResponse)
-            .toList();
-        List<UserWorkExperienceResponse> workExpResponses = workExperience
-            .stream()
-            .map(this::mapWorkExperienceWithCountry)
-            .toList();
-        List<SkillResponse> skillResponses = skillMapper.toResponseList(skills);
+            List<UserEducation> education = userEducationRepository.findByUserIdAndIsActiveTrueOrderByStartAtDesc(
+                    userId);
+            List<UserWorkExperience> workExperience = userWorkExperienceRepository
+                    .findByUserIdAndIsActiveTrueOrderByStartAtDesc(
+                            userId);
+            List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+            List<UUID> skillIds = userSkills
+                    .stream()
+                    .map(UserSkill::getSkillId)
+                    .toList();
+            List<Skill> skills = skillIds.isEmpty()
+                    ? List.of()
+                    : skillRepository.findByIdInAndIsActiveTrue(skillIds);
 
-        return UserProfileResponse.builder()
-            .user(mapUserWithCountry(user))
-            .education(educationResponses)
-            .workExperience(workExpResponses)
-            .skills(skillResponses)
-            .build();
+            List<UserEducationResponse> educationResponses = education
+                    .stream()
+                    .map(userEducationMapper::toResponse)
+                    .toList();
+            List<UserWorkExperienceResponse> workExpResponses = workExperience
+                    .stream()
+                    .map(this::mapWorkExperienceWithCountry)
+                    .toList();
+            List<SkillResponse> skillResponses = skillMapper.toResponseList(skills);
+
+            return UserProfileResponse.builder()
+                    .user(mapUserWithCountry(user))
+                    .education(educationResponses)
+                    .workExperience(workExpResponses)
+                    .skills(skillResponses)
+                    .build();
+        } finally {
+            ShardContext.clear();
+        }
     }
 
+    /**
+     * Get all active users. From all shards.
+     */
     @Override
     public List<UserResponse> getAllUsers() {
+
         log.info("Fetching all active users");
-        return userRepository
-            .findAll()
-            .stream()
-            .filter(User::isActive)
-            .map(this::mapUserWithCountry)
-            .toList();
+        List<UserResponse> allUsers = new ArrayList<>();
+        for (String shardKey : shardingProperties.getShards().keySet()) {
+            ShardContext.setShardKey(shardKey);
+            try {
+                userRepository
+                        .findAll()
+                        .stream()
+                        .filter(User::isActive)
+                        .map(this::mapUserWithCountry)
+                        .forEach(allUsers::add);
+            } finally {
+                ShardContext.clear();
+            }
+        }
+        return allUsers;
     }
 
     public PageResponse<UserResponse> getAllUsersPaged(int page, int size) {
         log.info(
-            "Fetching all active users (paged), page [{}], size [{}]",
-            page,
-            size
-        );
-        Pageable pageable = PageRequest.of(page, size);
-        Page<User> result = userRepository.findAll(pageable);
-        List<UserResponse> content = result
-            .getContent()
-            .stream()
-            .filter(User::isActive)
-            .map(this::mapUserWithCountry)
-            .toList();
-        return PageResponse.of(content, result);
+                "Fetching all active users (paged), page [{}], size [{}]",
+                page,
+                size);
+
+        int needed = (page + 1) * size;
+        List<User> allUsers = new ArrayList<>();
+
+        for (String shardKey : shardingProperties.getShards().keySet()) {
+            try {
+                ShardContext.setShardKey(shardKey);
+                Pageable pageable = PageRequest.of(0, needed);
+                Page<User> result = userRepository.findAll(pageable);
+                result.getContent()
+                        .stream()
+                        .filter(User::isActive)
+                        .forEach(allUsers::add);
+            } finally {
+                ShardContext.clear();
+            }
+        }
+
+        // Sort by createdAt descending if available, otherwise by id for determinism
+        try {
+            allUsers.sort(Comparator.comparing(User::getCreatedAt).reversed());
+        } catch (Throwable t) {
+            allUsers.sort(Comparator.comparing(User::getId));
+        }
+
+        int total = allUsers.size();
+        int fromIndex = page * size;
+        int toIndex = Math.min(fromIndex + size, total);
+        List<User> pageUsers = (fromIndex >= total) ? List.of() : allUsers.subList(fromIndex, toIndex);
+
+        List<UserResponse> content = pageUsers.stream()
+                .map(this::mapUserWithCountry)
+                .toList();
+
+        Page<User> pageImpl = new PageImpl<>(pageUsers, PageRequest.of(page, size),
+                total);
+
+        return PageResponse.of(content, pageImpl);
     }
 
     /**
@@ -350,325 +424,357 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public List<UserResponse> searchUsers(
-        String skills,
-        String country,
-        String city,
-        String education,
-        String workExperience,
-        String employmentTypes,
-        String username
-    ) {
+            String skills,
+            String country,
+            String city,
+            String education,
+            String workExperience,
+            String employmentTypes,
+            String username) {
         log.info(
-            "Searching for users with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], and username [{}]",
-            skills,
-            country,
-            city,
-            education,
-            workExperience,
-            employmentTypes,
-            username
-        );
+                "Searching for users with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], and username [{}]",
+                skills,
+                country,
+                city,
+                education,
+                workExperience,
+                employmentTypes,
+                username);
 
-        List<String> skillList = (skills != null && !skills.isEmpty())
-            ? Arrays.stream(skills.split(","))
-                  .map(s -> s.toLowerCase().trim())
-                  .filter(s -> !s.isEmpty())
-                  .toList()
-            : Collections.emptyList();
-
-        // Parse city (prioritize city over country when both provided)
-        String cityFilter = (city != null && !city.isBlank())
-            ? city.trim()
-            : null;
-
-        // Parse country (only used when city not provided)
-        UUID countryFilterId = null;
-        if ((cityFilter == null) && country != null && !country.isBlank()) {
-            countryFilterId = countryRepository
-                .findByAbbreviationIgnoreCase(country.trim())
-                .map(com.team.ja.user.model.Country::getId)
-                .orElse(null);
-        }
-
-        // Parse education level
-        com.team.ja.common.enumeration.EducationLevel educationLevel = null;
-        if (education != null && !education.isBlank()) {
-            try {
-                educationLevel =
-                    com.team.ja.common.enumeration.EducationLevel.valueOf(
-                        education.trim().toUpperCase()
-                    );
-            } catch (IllegalArgumentException ignored) {
-                educationLevel = null;
+        try {
+            if (country != null && !country.isBlank()) {
+                country = country.trim();
+                String shardKey = ShardingProperties.resolveShard(country);
+                ShardContext.setShardKey(shardKey);
+            } else {
+                ShardContext.setShardKey("user_shard_vn");
             }
-        }
 
-        // Parse work experience keywords (CSV)
-        List<String> workExpKeywords = (workExperience != null &&
-                !workExperience.isBlank())
-            ? Arrays.stream(workExperience.split(","))
-                  .map(s -> s.toLowerCase().trim())
-                  .filter(s -> !s.isEmpty())
-                  .toList()
-            : Collections.emptyList();
+            List<String> skillList = (skills != null && !skills.isEmpty())
+                    ? Arrays.stream(skills.split(","))
+                            .map(s -> s.toLowerCase().trim())
+                            .filter(s -> !s.isEmpty())
+                            .toList()
+                    : Collections.emptyList();
 
-        // Parse employment types (CSV)
-        List<com.team.ja.common.enumeration.EmploymentType> empTypes =
-            (employmentTypes != null && !employmentTypes.isBlank())
-                ? Arrays.stream(employmentTypes.split(","))
-                      .map(String::trim)
-                      .filter(s -> !s.isEmpty())
-                      .map(String::toUpperCase)
-                      .map(typeStr -> {
-                          try {
-                              return com.team.ja.common.enumeration.EmploymentType.valueOf(
-                                  typeStr
-                              );
-                          } catch (IllegalArgumentException ex) {
-                              return null;
-                          }
-                      })
-                      .filter(java.util.Objects::nonNull)
-                      .toList()
-                : java.util.Collections.emptyList();
+            // Parse city (prioritize city over country when both provided)
+            String cityFilter = (city != null && !city.isBlank())
+                    ? city.trim()
+                    : null;
 
-        Specification<User> spec = Specification.where(
-            UserSpecification.isActive()
-        )
-            .and(UserSpecification.hasSkills(skillList))
-            // Location: prioritize city over country
-            .and(UserSpecification.hasCity(cityFilter))
-            .and(UserSpecification.hasCountry(countryFilterId))
-            // Education level
-            .and(UserSpecification.hasEducationLevel(educationLevel))
-            // Work experience keywords
-            .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
-            // Employment types
-            .and(UserSpecification.hasEmploymentTypes(empTypes));
+            // Parse country (only used when city not provided)
+            UUID countryFilterId = null;
+            if ((cityFilter == null) && country != null && !country.isBlank()) {
+                countryFilterId = countryRepository
+                        .findByAbbreviationIgnoreCase(country.trim())
+                        .map(Country::getId)
+                        .orElse(null);
+            }
 
-        if (username != null && !username.isEmpty()) {
-            String un = username.trim();
+            // Parse education level
+            EducationLevel educationLevel = null;
+            if (education != null && !education.isBlank()) {
+                try {
+                    educationLevel = EducationLevel.valueOf(
+                            education.trim().toUpperCase());
+                } catch (IllegalArgumentException ignored) {
+                    educationLevel = null;
+                }
+            }
 
-            // Case-insensitive LIKE across username fields (firstName, lastName)
-            spec = spec.and(UserSpecification.hasUsername(un));
+            // Parse work experience keywords (CSV)
+            List<String> workExpKeywords = (workExperience != null &&
+                    !workExperience.isBlank())
+                            ? Arrays.stream(workExperience.split(","))
+                                    .map(s -> s.toLowerCase().trim())
+                                    .filter(s -> !s.isEmpty())
+                                    .toList()
+                            : Collections.emptyList();
 
-            // Apply FTS when available (AND only when there are matches)
-            List<User> ftsCandidates = userRepository.findByFts(un);
-            if (!ftsCandidates.isEmpty()) {
-                List<UUID> ftsIds = ftsCandidates
+            // Parse employment types (CSV)
+            List<EmploymentType> empTypes = (employmentTypes != null
+                    && !employmentTypes.isBlank())
+                            ? Arrays.stream(employmentTypes.split(","))
+                                    .map(String::trim)
+                                    .filter(s -> !s.isEmpty())
+                                    .map(String::toUpperCase)
+                                    .map(typeStr -> {
+                                        try {
+                                            return EmploymentType.valueOf(
+                                                    typeStr);
+                                        } catch (IllegalArgumentException ex) {
+                                            return null;
+                                        }
+                                    })
+                                    .filter(java.util.Objects::nonNull)
+                                    .toList()
+                            : java.util.Collections.emptyList();
+
+            Specification<User> spec = Specification.where(
+                    UserSpecification.isActive())
+                    .and(UserSpecification.hasSkills(skillList))
+                    // Location: prioritize city over country
+                    .and(UserSpecification.hasCity(cityFilter))
+                    .and(UserSpecification.hasCountry(countryFilterId))
+                    // Education level
+                    .and(UserSpecification.hasEducationLevel(educationLevel))
+                    // Work experience keywords
+                    .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
+                    // Employment types
+                    .and(UserSpecification.hasEmploymentTypes(empTypes));
+
+            if (username != null && !username.isEmpty()) {
+                String un = username.trim();
+
+                // Case-insensitive LIKE across username fields (firstName, lastName)
+                spec = spec.and(UserSpecification.hasUsername(un));
+
+                // Apply FTS when available (AND only when there are matches)
+                List<User> ftsCandidates = userRepository.findByFts(un);
+                if (!ftsCandidates.isEmpty()) {
+                    List<UUID> ftsIds = ftsCandidates
+                            .stream()
+                            .map(User::getId)
+                            .toList();
+                    spec = spec.and(UserSpecification.idIn(ftsIds));
+                }
+
+                // Do not apply country filtering from username text here
+            }
+
+            return userRepository
+                    .findAll(spec)
                     .stream()
-                    .map(User::getId)
+                    .map(this::mapUserWithCountry)
                     .toList();
-                spec = spec.and(UserSpecification.idIn(ftsIds));
-            }
-
-            // Do not apply country filtering from username text here
+        } finally {
+            ShardContext.clear();
         }
-
-        return userRepository
-            .findAll(spec)
-            .stream()
-            .map(this::mapUserWithCountry)
-            .toList();
     }
 
     /**
      * Paginated search combining FTS with filters and enforcing isActive.
      */
     public PageResponse<UserResponse> searchUsersPaged(
-        String skills,
-        String country,
-        String city,
-        String education,
-        String workExperience,
-        String employmentTypes,
-        String username,
-        int page,
-        int size
-    ) {
+            String skills,
+            String country,
+            String city,
+            String education,
+            String workExperience,
+            String employmentTypes,
+            String username,
+            int page,
+            int size) {
         log.info(
-            "Searching for users (paged) with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], username [{}], page [{}], size [{}]",
-            skills,
-            country,
-            city,
-            education,
-            workExperience,
-            employmentTypes,
-            username,
-            page,
-            size
-        );
+                "Searching for users (paged) with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], username [{}], page [{}], size [{}]",
+                skills,
+                country,
+                city,
+                education,
+                workExperience,
+                employmentTypes,
+                username,
+                page,
+                size);
 
-        List<String> skillList = (skills != null && !skills.isEmpty())
-            ? Arrays.stream(skills.split(","))
-                  .map(s -> s.toLowerCase().trim())
-                  .filter(s -> !s.isEmpty())
-                  .toList()
-            : Collections.emptyList();
-
-        // Parse city (prioritize city over country when both provided)
-        String cityFilter = (city != null && !city.isBlank())
-            ? city.trim()
-            : null;
-
-        // Parse country (only used when city not provided)
-        UUID countryFilterId = null;
-        if ((cityFilter == null) && country != null && !country.isBlank()) {
-            countryFilterId = countryRepository
-                .findByAbbreviationIgnoreCase(country.trim())
-                .map(com.team.ja.user.model.Country::getId)
-                .orElse(null);
+        if (country != null && !country.isBlank()) {
+            country = country.trim();
+            String shardKey = ShardingProperties.resolveShard(country);
+            ShardContext.setShardKey(shardKey);
+        } else {
+            ShardContext.setShardKey("user_shard_vn");
         }
 
-        // Parse education level
-        com.team.ja.common.enumeration.EducationLevel educationLevel = null;
-        if (education != null && !education.isBlank()) {
-            try {
-                educationLevel =
-                    com.team.ja.common.enumeration.EducationLevel.valueOf(
-                        education.trim().toUpperCase()
-                    );
-            } catch (IllegalArgumentException ignored) {
-                educationLevel = null;
+        try {
+            List<String> skillList = (skills != null && !skills.isEmpty())
+                    ? Arrays.stream(skills.split(","))
+                            .map(s -> s.toLowerCase().trim())
+                            .filter(s -> !s.isEmpty())
+                            .toList()
+                    : Collections.emptyList();
+
+            // Parse city (prioritize city over country when both provided)
+            String cityFilter = (city != null && !city.isBlank())
+                    ? city.trim()
+                    : null;
+
+            // Parse country (only used when city not provided)
+            UUID countryFilterId = null;
+            if ((cityFilter == null) && country != null && !country.isBlank()) {
+                countryFilterId = countryRepository
+                        .findByAbbreviationIgnoreCase(country.trim())
+                        .map(Country::getId)
+                        .orElse(null);
             }
-        }
 
-        // Parse work experience keywords (CSV)
-        List<String> workExpKeywords = (workExperience != null &&
-                !workExperience.isBlank())
-            ? Arrays.stream(workExperience.split(","))
-                  .map(s -> s.toLowerCase().trim())
-                  .filter(s -> !s.isEmpty())
-                  .toList()
-            : Collections.emptyList();
+            // Parse education level
+            com.team.ja.common.enumeration.EducationLevel educationLevel = null;
+            if (education != null && !education.isBlank()) {
+                try {
+                    educationLevel = com.team.ja.common.enumeration.EducationLevel.valueOf(
+                            education.trim().toUpperCase());
+                } catch (IllegalArgumentException ignored) {
+                    educationLevel = null;
+                }
+            }
 
-        // Parse employment types (CSV)
-        List<com.team.ja.common.enumeration.EmploymentType> empTypes =
-            (employmentTypes != null && !employmentTypes.isBlank())
-                ? Arrays.stream(employmentTypes.split(","))
-                      .map(String::trim)
-                      .filter(s -> !s.isEmpty())
-                      .map(String::toUpperCase)
-                      .map(typeStr -> {
-                          try {
-                              return com.team.ja.common.enumeration.EmploymentType.valueOf(
-                                  typeStr
-                              );
-                          } catch (IllegalArgumentException ex) {
-                              return null;
-                          }
-                      })
-                      .filter(java.util.Objects::nonNull)
-                      .toList()
-                : java.util.Collections.emptyList();
+            // Parse work experience keywords (CSV)
+            List<String> workExpKeywords = (workExperience != null &&
+                    !workExperience.isBlank())
+                            ? Arrays.stream(workExperience.split(","))
+                                    .map(s -> s.toLowerCase().trim())
+                                    .filter(s -> !s.isEmpty())
+                                    .toList()
+                            : Collections.emptyList();
 
-        Specification<User> spec = Specification.where(
-            UserSpecification.isActive()
-        )
-            .and(UserSpecification.hasSkills(skillList))
-            // Location: prioritize city over country
-            .and(UserSpecification.hasCity(cityFilter))
-            .and(UserSpecification.hasCountry(countryFilterId))
-            // Education level
-            .and(UserSpecification.hasEducationLevel(educationLevel))
-            // Work experience keywords
-            .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
-            // Employment types
-            .and(UserSpecification.hasEmploymentTypes(empTypes));
+            // Parse employment types (CSV)
+            List<com.team.ja.common.enumeration.EmploymentType> empTypes = (employmentTypes != null
+                    && !employmentTypes.isBlank())
+                            ? Arrays.stream(employmentTypes.split(","))
+                                    .map(String::trim)
+                                    .filter(s -> !s.isEmpty())
+                                    .map(String::toUpperCase)
+                                    .map(typeStr -> {
+                                        try {
+                                            return com.team.ja.common.enumeration.EmploymentType.valueOf(
+                                                    typeStr);
+                                        } catch (IllegalArgumentException ex) {
+                                            return null;
+                                        }
+                                    })
+                                    .filter(java.util.Objects::nonNull)
+                                    .toList()
+                            : java.util.Collections.emptyList();
 
-        if (username != null && !username.isEmpty()) {
-            String un = username.trim();
+            Specification<User> spec = Specification.where(
+                    UserSpecification.isActive())
+                    .and(UserSpecification.hasSkills(skillList))
+                    // Location: prioritize city over country
+                    .and(UserSpecification.hasCity(cityFilter))
+                    .and(UserSpecification.hasCountry(countryFilterId))
+                    // Education level
+                    .and(UserSpecification.hasEducationLevel(educationLevel))
+                    // Work experience keywords
+                    .and(UserSpecification.hasWorkExperienceKeywords(workExpKeywords))
+                    // Employment types
+                    .and(UserSpecification.hasEmploymentTypes(empTypes));
 
-            // Case-insensitive LIKE across username fields (firstName, lastName)
-            spec = spec.and(UserSpecification.hasUsername(un));
+            if (username != null && !username.isEmpty()) {
+                String un = username.trim();
 
-            // Apply FTS when available (AND only when there are matches)
-            List<User> ftsCandidates = userRepository.findByFts(un);
-            if (!ftsCandidates.isEmpty()) {
-                List<UUID> ftsIds = ftsCandidates
+                // Case-insensitive LIKE across username fields (firstName, lastName)
+                spec = spec.and(UserSpecification.hasUsername(un));
+
+                // Apply FTS when available (AND only when there are matches)
+                List<User> ftsCandidates = userRepository.findByFts(un);
+                if (!ftsCandidates.isEmpty()) {
+                    List<UUID> ftsIds = ftsCandidates
+                            .stream()
+                            .map(User::getId)
+                            .toList();
+                    spec = spec.and(UserSpecification.idIn(ftsIds));
+                }
+
+                // Do not apply country filtering from username text here
+            }
+
+            Pageable pageable = PageRequest.of(page, size);
+            Page<User> result = userRepository.findAll(spec, pageable);
+
+            List<UserResponse> content = result
+                    .getContent()
                     .stream()
-                    .map(User::getId)
+                    .map(this::mapUserWithCountry)
                     .toList();
-                spec = spec.and(UserSpecification.idIn(ftsIds));
-            }
 
-            // Do not apply country filtering from username text here
+            return PageResponse.of(content, result);
+        } finally {
+            ShardContext.clear();
         }
-
-        Pageable pageable = PageRequest.of(page, size);
-        Page<User> result = userRepository.findAll(spec, pageable);
-
-        List<UserResponse> content = result
-            .getContent()
-            .stream()
-            .map(this::mapUserWithCountry)
-            .toList();
-
-        return PageResponse.of(content, result);
     }
 
     @Override
     @Transactional
     public void deactivateUser(UUID userId) {
         log.info("Deactivating user with ID: {}", userId);
-        User user = userRepository
-            .findById(userId)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", userId.toString())
-            );
-        user.deactivate();
-        userRepository.save(user);
-        log.info("Deactivated user with ID: {}", userId);
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            User user = userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+            user.deactivate();
+            userRepository.save(user);
+            log.info("Deactivated user with ID: {}", userId);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     @Transactional
     public UserResponse reactivateUser(UUID userId) {
         log.info("Reactivating user with ID: {}", userId);
-        User user = userRepository
-            .findById(userId)
-            .orElseThrow(() ->
-                new NotFoundException("User", "id", userId.toString())
-            );
 
-        if (user.isActive()) {
-            log.warn("User {} is already active", userId);
-            return mapUserWithCountry(user);
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            User user = userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+
+            if (user.isActive()) {
+                log.warn("User {} is already active", userId);
+                return mapUserWithCountry(user);
+            }
+
+            user.activate();
+            User savedUser = userRepository.save(user);
+
+            log.info("Reactivated user with ID: {}", userId);
+            return mapUserWithCountry(savedUser);
+        } finally {
+            ShardContext.clear();
         }
 
-        user.activate();
-        User savedUser = userRepository.save(user);
-
-        log.info("Reactivated user with ID: {}", userId);
-        return mapUserWithCountry(savedUser);
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
+
+        String shardKey = shardLookupService.findShardByUserEmail(email);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            log.info("email: '{}' exist in db", email);
+            return userRepository.existsByEmail(email);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     private UserResponse mapUserWithCountry(User user) {
         UserResponse response = userMapper.toResponse(user);
         if (user.getCountryId() != null) {
             countryRepository
-                .findById(user.getCountryId())
-                .map(countryMapper::toResponse)
-                .ifPresent(response::setCountry);
+                    .findById(user.getCountryId())
+                    .map(countryMapper::toResponse)
+                    .ifPresent(response::setCountry);
         }
         return response;
     }
 
     private UserWorkExperienceResponse mapWorkExperienceWithCountry(
-        UserWorkExperience workExp
-    ) {
-        UserWorkExperienceResponse response =
-            userWorkExperienceMapper.toResponse(workExp);
+            UserWorkExperience workExp) {
+        UserWorkExperienceResponse response = userWorkExperienceMapper.toResponse(workExp);
         if (workExp.getCountryId() != null) {
             countryRepository
-                .findById(workExp.getCountryId())
-                .map(countryMapper::toResponse)
-                .ifPresent(response::setCountry);
+                    .findById(workExp.getCountryId())
+                    .map(countryMapper::toResponse)
+                    .ifPresent(response::setCountry);
         }
         return response;
     }

@@ -9,9 +9,9 @@ import com.team.ja.user.mapper.SkillMapper;
 import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserSkill;
-import com.team.ja.user.repository.SkillRepository;
 import com.team.ja.user.repository.UserRepository;
 import com.team.ja.user.repository.UserSkillRepository;
+import com.team.ja.user.repository.global.SkillRepository;
 import com.team.ja.user.service.SkillService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +36,7 @@ public class SkillServiceImpl implements SkillService {
     private final UserRepository userRepository;
     private final UserProfileUpdatedProducer profileUpdatedProducer;
     private final SkillMapper skillMapper;
+    private final ShardLookupService shardLookupService;
 
     @Override
     public List<SkillResponse> getAllSkills() {
@@ -88,9 +89,9 @@ public class SkillServiceImpl implements SkillService {
 
         for (Skill skillToAdd : skills) {
             UserSkill existingRelation = existingUserSkills.stream()
-                .filter(us -> us.getSkillId().equals(skillToAdd.getId()))
-                .findFirst()
-                .orElse(null);
+                    .filter(us -> us.getSkillId().equals(skillToAdd.getId()))
+                    .findFirst()
+                    .orElse(null);
 
             if (existingRelation == null) {
                 // This is a brand new skill for the user
@@ -107,7 +108,7 @@ public class SkillServiceImpl implements SkillService {
             }
             // If the relation exists and is already active, do nothing.
         }
-        
+
         skillRepository.saveAll(skills);
 
         if (skillsChanged) {
@@ -149,7 +150,7 @@ public class SkillServiceImpl implements SkillService {
                 skillRepository.save(skill);
             }
         });
-        
+
         log.info("Removed skill {} from user {}. Publishing event.", skillId, userId);
         List<UUID> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId)
                 .stream()
