@@ -1,4 +1,4 @@
-package com.team.ja.user.repository.global;
+package com.team.ja.user.repository;
 
 import com.team.ja.user.model.Skill;
 import org.springframework.data.jpa.repository.JpaRepository;

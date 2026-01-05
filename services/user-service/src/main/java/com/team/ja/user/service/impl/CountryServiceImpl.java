@@ -4,7 +4,7 @@ import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.dto.response.CountryResponse;
 import com.team.ja.user.mapper.CountryMapper;
 import com.team.ja.user.model.Country;
-import com.team.ja.user.repository.global.CountryRepository;
+import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.service.CountryService;
 import java.util.List;
 import java.util.UUID;

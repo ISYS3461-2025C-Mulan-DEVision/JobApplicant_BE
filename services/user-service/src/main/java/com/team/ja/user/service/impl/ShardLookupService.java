@@ -15,8 +15,8 @@ import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.config.sharding.ShardingProperties;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.Country;
+import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.UserRepository;
-import com.team.ja.user.repository.global.CountryRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +54,40 @@ public class ShardLookupService {
             cachedUserIdShard(userId, foundShard);
         }
         return foundShard;
+    }
+
+    /**
+     * Determines the target Shard ID for a specific country UUID.
+     * This is used by the UserService to see if a migration is required.
+     */
+    public String getShardIdByCountryId(UUID countryId) {
+        Country country = countryRepository.findById(countryId)
+                .orElseThrow(() -> new IllegalArgumentException("Country ID not found: " + countryId));
+
+        String abbreviation = country.getAbbreviation(); // e.g., "VN"
+        String shardId = shardingProperties.getShardForCountry(abbreviation);
+
+        log.debug("Country {} ({}) maps to shard: {}", country.getName(), abbreviation, shardId);
+        return shardId;
+    }
+
+    /**
+     * NEW: Updates the Redis mapping for a user.
+     * This is the "Point of No Return" in the migration process.
+     */
+    public void updateUserShardMapping(UUID userId, String targetShardId) {
+        cachedUserIdShard(userId, targetShardId);
+
+        ShardContext.setShardKey(targetShardId);
+        try {
+            userRepository.findById(userId).ifPresent(user -> {
+                cachedUserEmailShard(user.getEmail(), targetShardId);
+                log.info("Updated global lookup for User {} and Email {} to Shard {}",
+                        userId, user.getEmail(), targetShardId);
+            });
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     /**

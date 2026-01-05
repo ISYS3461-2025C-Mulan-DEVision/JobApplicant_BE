@@ -2,15 +2,21 @@ package com.team.ja.user.kafka;
 
 import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.common.event.UserRegisteredEvent;
+import com.team.ja.user.config.sharding.ShardContext;
+import com.team.ja.user.config.sharding.ShardingProperties;
 import com.team.ja.user.model.Country;
 import com.team.ja.user.model.User;
+import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.UserRepository;
-import com.team.ja.user.repository.global.CountryRepository;
+import com.team.ja.user.service.impl.ShardLookupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.checkerframework.checker.units.qual.s;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -24,49 +30,65 @@ public class UserRegisteredConsumer {
 
         private final UserRepository userRepository;
         private final CountryRepository countryRepository;
+        private final ShardingProperties shardingProperties;
 
         /**
          * Handle user registered event.
          * Creates a new user profile with the same userId from auth-service.
          */
         @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "${spring.kafka.consumer.group-id}")
-        @Transactional
         public void handleUserRegistered(UserRegisteredEvent event) {
-                log.info(
-                                "Received user-registered event for userId: {}",
-                                event.getUserId());
 
+                log.info("Received user-registered event for userId: {} (Country: {})",
+                                event.getUserId(), event.getCountryAbbreviation());
+
+                // 1. Determine shard key first
+                String shardKey = ShardingProperties.resolveShard(event.getCountryAbbreviation());
+
+                // 2. Set the key BEFORE touching any repository
+                ShardContext.setShardKey(shardKey);
+                log.info("Consumer routing thread to shard: {}", shardKey);
+
+                try {
+                        createProfileInShard(event);
+                        log.info("User profile created successfully for userId: {}", event.getUserId());
+                } catch (Exception e) {
+                        log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage());
+                } finally {
+                        // 4. Always clear
+                        ShardContext.clear();
+                }
+        }
+
+        @Transactional(propagation = Propagation.REQUIRES_NEW)
+        public void createProfileInShard(UserRegisteredEvent event) {
                 // Check if user already exists (idempotency)
                 if (userRepository.existsById(event.getUserId())) {
-                        log.warn(
-                                        "User already exists with userId: {}. Skipping.",
+                        log.warn("User profile already exists for userId: {}, skipping creation.",
                                         event.getUserId());
                         return;
                 }
 
-                // Resolve country abbreviation to countryId (may be null if not found)
-                java.util.UUID countryId = null;
-                if (event.getCountryAbbreviation() != null &&
-                                !event.getCountryAbbreviation().isBlank()) {
-                        countryId = countryRepository
-                                        .findByAbbreviationIgnoreCase(event.getCountryAbbreviation())
-                                        .map(Country::getId)
-                                        .orElse(null);
-                }
+                // Fetch country entity
+                Country country = countryRepository.findByAbbreviationIgnoreCase(event.getCountryAbbreviation())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Invalid country abbreviation: "
+                                                                + event.getCountryAbbreviation()));
 
-                // Create user profile with extended fields
+                // Create new user profile
                 User user = User.builder()
-                                .id(event.getUserId()) // Use same ID from auth-service
+                                .id(event.getUserId())
                                 .email(event.getEmail())
                                 .firstName(event.getFirstName())
                                 .lastName(event.getLastName())
+                                .countryId(country.getId())
                                 .phone(event.getPhone())
                                 .address(event.getAddress())
                                 .city(event.getCity())
-                                .countryId(countryId)
                                 .build();
 
                 userRepository.save(user);
-                log.info("User profile created for userId: {}", event.getUserId());
+                log.info("User profile created in shard for userId: {}", event.getUserId());
         }
+
 }

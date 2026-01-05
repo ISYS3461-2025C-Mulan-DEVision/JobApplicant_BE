@@ -83,7 +83,6 @@ public class AuthenticationGatewayFilterFactory
                         String userId = jwtUtil.extractUserId(token);
                         String username = jwtUtil.extractUsername(token);
                         String role = jwtUtil.extractRole(token);
-                        String country = jwtUtil.extrachCountry(token);
 
                         log.info("Authenticated request from user: {} ({})", username, userId);
 
@@ -92,7 +91,6 @@ public class AuthenticationGatewayFilterFactory
                                 .header("X-User-Id", userId != null ? userId : "")
                                 .header("X-User-Email", username != null ? username : "")
                                 .header("X-User-Role", role != null ? role : "")
-                                .header("X-User-Country", country != null ? country : "")
                                 .build();
 
                         return chain.filter(exchange.mutate().request(modifiedRequest).build());

@@ -3,6 +3,8 @@ package com.team.ja.user.config.sharding;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import com.team.ja.user.service.impl.ShardLookupService;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,21 +15,21 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ShardInterceptor implements HandlerInterceptor {
 
+    private final ShardLookupService shardLookupService;
+
     @Override
     public boolean preHandle(HttpServletRequest request,
             HttpServletResponse response, Object handler) throws Exception {
-
-        String countryHeader = request.getHeader("X-User-Country");
-        log.info("Extracted country from header: {}", countryHeader);
-        if (countryHeader != null && !countryHeader.isEmpty()) {
-            // Determine shard ID based on country
-            String shardId = ShardingProperties.resolveShard(countryHeader);
-            log.info("Routing to shard ID: {} for country: {}", shardId, countryHeader);
-            ShardContext.setShardKey(shardId);
+        if (request.getHeader("X-User-Id") != null) {
+            String shardKey = shardLookupService.findShardIdByUserId(
+                    java.util.UUID.fromString(request.getHeader("X-User-Id")));
+            ShardContext.setShardKey(shardKey);
+            log.info("Routed to shard ID: {} based on user ID", shardKey);
         } else {
-            log.warn("No country information found in request headers.");
-            ShardContext.setShardKey(ShardingProperties.DEFAULT_SHARD);
-            log.info("Defaulting to shard ID: {}", ShardingProperties.DEFAULT_SHARD);
+            log.warn("No X-User-Id header found; cannot determine shard.");
+            log.warn("Proceeding without shard context may lead to errors.");
+            ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
+            log.info("Defaulted to shard ID: {}", ShardContext.DEFAULT_SHARD);
         }
         return true;
     }

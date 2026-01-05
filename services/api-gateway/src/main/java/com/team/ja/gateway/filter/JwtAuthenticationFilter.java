@@ -60,9 +60,8 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
             String userId = jwtUtil.extractUserId(token);
             String username = jwtUtil.extractUsername(token);
             String role = jwtUtil.extractRole(token);
-            String country = jwtUtil.extrachCountry(token);
 
-            log.debug("Authenticated user: {} ({}), role: {}, country: {}", username, userId, role, country);
+            log.debug("Authenticated user: {} ({}), role: {}", username, userId, role);
 
             // Add user info to request headers for downstream services
             ServerHttpRequest modifiedRequest = request.mutate()

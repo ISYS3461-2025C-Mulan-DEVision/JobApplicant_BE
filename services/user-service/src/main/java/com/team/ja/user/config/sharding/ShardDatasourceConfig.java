@@ -11,8 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -26,10 +24,29 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 @RequiredArgsConstructor
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.team.ja.user.repository", excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.team\\.ja\\.user\\.repository\\.global\\..*"), entityManagerFactoryRef = "shardEntityManagerFactory", transactionManagerRef = "shardTransactionManager")
+@EnableJpaRepositories(basePackages = "com.team.ja.user.repository", entityManagerFactoryRef = "shardEntityManagerFactory", transactionManagerRef = "shardTransactionManager")
 public class ShardDatasourceConfig {
 
     private final ShardingProperties shardingProperties;
+
+    @Bean(name = "resolvedDataSources")
+    public Map<Object, Object> resolvedDataSources() {
+        log.info("Building shard datasource map from ShardingProperties");
+
+        Map<Object, Object> targetDatasources = new HashMap<>();
+        Map<String, ShardingProperties.ShardProperties> shards = shardingProperties.getShards();
+
+        if (shards == null || shards.isEmpty()) {
+            throw new IllegalStateException("No shards configured in ShardingProperties");
+        }
+
+        shards.forEach((shardId, shardProps) -> {
+            log.info("Creating HikariDataSource for shard: {}", shardId);
+            targetDatasources.put(shardId, createHikariDataSource(shardProps));
+        });
+
+        return targetDatasources;
+    }
 
     @Bean
     @Primary

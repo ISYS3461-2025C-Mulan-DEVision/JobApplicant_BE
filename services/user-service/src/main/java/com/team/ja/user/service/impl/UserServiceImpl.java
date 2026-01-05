@@ -3,6 +3,8 @@ package com.team.ja.user.service.impl;
 import com.team.ja.common.dto.PageResponse;
 import com.team.ja.common.enumeration.EducationLevel;
 import com.team.ja.common.enumeration.EmploymentType;
+import com.team.ja.common.event.KafkaTopics;
+import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.BadRequestException;
 import com.team.ja.common.exception.ConflictException;
@@ -29,12 +31,12 @@ import com.team.ja.user.model.UserEducation;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.model.UserWorkExperience;
 import com.team.ja.user.model.Country;
+import com.team.ja.user.repository.CountryRepository;
+import com.team.ja.user.repository.SkillRepository;
 import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
 import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
-import com.team.ja.user.repository.global.CountryRepository;
-import com.team.ja.user.repository.global.SkillRepository;
 import com.team.ja.user.repository.specification.UserSpecification;
 import com.team.ja.user.service.UserService;
 import java.awt.image.BufferedImage;
@@ -56,6 +58,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -85,6 +88,8 @@ public class UserServiceImpl implements UserService {
     private final CountryMapper countryMapper;
     private final ShardingProperties shardingProperties;
     private final ShardLookupService shardLookupService;
+
+    private final KafkaTemplate<String, UserMigrationEvent> userMigrationEventKafkaTemplate;
 
     private static final int AVATAR_SIZE = 256;
     private static final List<String> SUPPORTED_IMAGE_TYPES = List.of(
@@ -162,12 +167,32 @@ public class UserServiceImpl implements UserService {
             if (request.getPhone() != null)
                 user.setPhone(request.getPhone());
             if (request.getCountryId() != null) {
-                countryRepository
+                Country country = countryRepository
                         .findById(request.getCountryId())
                         .orElseThrow(() -> new NotFoundException(
                                 "Country",
                                 "id",
                                 request.getCountryId().toString()));
+
+                // user.setCountryId(request.getCountryId());
+                // Perform moving to new shard in background after commit
+                String targetShard = ShardingProperties.resolveShard(country.getAbbreviation());
+                if (targetShard.equals(ShardContext.getShardKey())) {
+                    log.info("User {} country updated to same shard {}, no migration needed.", userId, targetShard);
+                } else {
+                    log.info("User {} country updated, scheduling migration from shard {} to {}.", userId,
+                            ShardContext.getShardKey(), targetShard);
+
+                    UserMigrationEvent migrationEvent = UserMigrationEvent.builder()
+                            .userId(userId)
+                            .sourceShardId(shardKey)
+                            .targetShardId(targetShard)
+                            .newCountryId(request.getCountryId())
+                            .build();
+
+                    userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent);
+
+                }
                 user.setCountryId(request.getCountryId());
             }
             if (request.getAddress() != null)
