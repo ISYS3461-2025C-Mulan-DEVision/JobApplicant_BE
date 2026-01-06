@@ -19,7 +19,9 @@ import com.team.ja.user.service.SkillService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -40,7 +42,7 @@ public class SkillServiceImpl implements SkillService {
     private final UserProfileUpdatedProducer profileUpdatedProducer;
     private final SkillMapper skillMapper;
     private final SkillCreateProducer skillCreateProducer;
-    private final ShardLookupService shardLookupService;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     public List<SkillResponse> getAllSkills() {
@@ -188,43 +190,38 @@ public class SkillServiceImpl implements SkillService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SkillResponse createSkill(String name) {
         log.info("Creating new skill: {}", name);
 
         String trimmedName = name.trim();
         String normalizedName = trimmedName.toLowerCase();
 
-        ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
-
-        try {
-            // Check if skill already exists
-            if (skillRepository.existsByNameIgnoreCaseAndIsActiveTrue(trimmedName)) {
-                throw new ConflictException("Skill with name '" + trimmedName + "' already exists");
-            }
-
-            Skill skill = Skill.builder()
-                    .name(trimmedName)
-                    .normalizedName(normalizedName)
-                    .usageCount(0)
-                    .build();
-
-            Skill saved = skillRepository.save(skill);
-            log.info("Created skill with ID: {}", saved.getId());
-
-            // Notify other shards about the new skill
-            SkillCreateEvent event = SkillCreateEvent.builder()
-                    .skillId(saved.getId())
-                    .name(saved.getName())
-                    .normalizedName(saved.getNormalizedName())
-                    .build();
-
-            skillCreateProducer.sendSkillCreateEvent(event);
-
-            return skillMapper.toResponse(saved);
-        } finally {
-            ShardContext.clear();
+        // Check if skill already exists
+        if (skillRepository.existsByNameIgnoreCaseAndIsActiveTrue(trimmedName)) {
+            throw new ConflictException("Skill with name '" + trimmedName + "' already exists");
         }
+
+        Skill skill = Skill.builder()
+                .name(trimmedName)
+                .normalizedName(normalizedName)
+                .usageCount(0)
+                .build();
+
+        Skill saved = skillRepository.save(skill);
+        log.info("Created skill with ID: {}", saved.getId());
+
+        // Notify other shards about the new skill
+        SkillCreateEvent event = SkillCreateEvent.builder()
+                .skillId(saved.getId())
+                .name(saved.getName())
+                .normalizedName(saved.getNormalizedName())
+                .build();
+
+        skillCreateProducer.sendSkillCreateEvent(event);
+
+        return skillMapper.toResponse(saved);
+
     }
 
     private void validateUserExists(UUID userId) {

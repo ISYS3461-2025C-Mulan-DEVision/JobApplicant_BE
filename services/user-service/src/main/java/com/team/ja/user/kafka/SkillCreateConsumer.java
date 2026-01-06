@@ -28,7 +28,8 @@ public class SkillCreateConsumer {
             "user_shard_sg",
             "user_shard_east_asia",
             "user_shard_oceania",
-            "user_shard_north_america"
+            "user_shard_north_america",
+            "user_shard_others"
     // user_shard_others is excluded because it's the source
     );
 
