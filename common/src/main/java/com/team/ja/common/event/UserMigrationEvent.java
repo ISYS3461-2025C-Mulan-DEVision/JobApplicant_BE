@@ -21,7 +21,7 @@ public class UserMigrationEvent {
     private String sourceShardId;
     private String targetShardId;
 
-    private UUID newCountryId;
+    private String newCountryAbbreviation;
 
     private LocalDateTime requestedAt;
     private String correlationId;

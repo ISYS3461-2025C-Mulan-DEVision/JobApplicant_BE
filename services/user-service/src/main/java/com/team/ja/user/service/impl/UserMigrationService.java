@@ -69,10 +69,12 @@ public class UserMigrationService {
                                                                 "User not found in source shard: "
                                                                                 + event.getUserId()));
 
-                                if (event.getNewCountryId() != null) {
-                                        countryRepository.findById(event.getNewCountryId())
-                                                        .map(Country::getAbbreviation)
-                                                        .ifPresent(countryAbbreviationRef::set);
+                                if (event != null) {
+                                        countryRepository
+                                                        .findByAbbreviationIgnoreCaseAndIsActiveTrue(
+                                                                        event.getNewCountryAbbreviation())
+                                                        .ifPresent(country -> countryAbbreviationRef
+                                                                        .set(country.getAbbreviation()));
                                 }
 
                                 Hibernate.initialize(user.getUserSkills());
@@ -107,23 +109,26 @@ public class UserMigrationService {
                                                 .address(migrationDto.getAddress())
                                                 .build();
 
-                                UUID localCountryId = null;
+                                String localCountryAbbreviation = null;
                                 if (targetCountryAbbreviation != null) {
-                                        localCountryId = countryRepository.findAll().stream()
-                                                        .filter(c -> c.getAbbreviation()
-                                                                        .equalsIgnoreCase(targetCountryAbbreviation))
-                                                        .map(Country::getId)
-                                                        .findFirst()
+                                        localCountryAbbreviation = countryRepository
+                                                        .findByAbbreviationIgnoreCaseAndIsActiveTrue(
+                                                                        targetCountryAbbreviation)
+                                                        .map(Country::getAbbreviation)
                                                         .orElse(null);
                                 }
 
-                                if (localCountryId == null) {
-                                        localCountryId = event.getNewCountryId();
-                                        log.warn("Could not resolve country code '{}' on target shard. Falling back to original ID: {}",
-                                                        targetCountryAbbreviation, localCountryId);
+                                if (localCountryAbbreviation == null) {
+                                        localCountryAbbreviation = event.getNewCountryAbbreviation();
+                                        log.warn("Could not resolve country code '{}' on target shard. Falling back to original abbreviation: {}",
+                                                        targetCountryAbbreviation, localCountryAbbreviation);
                                 }
 
-                                targetUser.setCountryId(localCountryId);
+                                targetUser.setCountryId(localCountryAbbreviation != null ? countryRepository
+                                                .findByAbbreviationIgnoreCaseAndIsActiveTrue(
+                                                                localCountryAbbreviation)
+                                                .map(Country::getId)
+                                                .orElse(null) : null);
 
                                 if (migrationDto.getEducation() != null) {
                                         targetUser.setEducation(migrationDto.getEducation().stream()

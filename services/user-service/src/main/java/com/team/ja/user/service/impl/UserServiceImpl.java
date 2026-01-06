@@ -166,13 +166,13 @@ public class UserServiceImpl implements UserService {
                         request.getLastName());
             if (request.getPhone() != null)
                 user.setPhone(request.getPhone());
-            if (request.getCountryId() != null) {
+            if (request.getCountryAbbreviation() != null) {
                 Country country = countryRepository
-                        .findById(request.getCountryId())
+                        .findByAbbreviationIgnoreCaseAndIsActiveTrue(request.getCountryAbbreviation())
                         .orElseThrow(() -> new NotFoundException(
                                 "Country",
-                                "id",
-                                request.getCountryId().toString()));
+                                "abbreviation",
+                                request.getCountryAbbreviation()));
 
                 // user.setCountryId(request.getCountryId());
                 // Perform moving to new shard in background after commit
@@ -187,13 +187,21 @@ public class UserServiceImpl implements UserService {
                             .userId(userId)
                             .sourceShardId(shardKey)
                             .targetShardId(targetShard)
-                            .newCountryId(request.getCountryId())
+                            .newCountryAbbreviation(request.getCountryAbbreviation())
                             .build();
 
                     userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent);
 
                 }
-                user.setCountryId(request.getCountryId());
+
+                Country newCountry = countryRepository
+                        .findByAbbreviationIgnoreCaseAndIsActiveTrue(request.getCountryAbbreviation())
+                        .orElseThrow(() -> new NotFoundException(
+                                "Country",
+                                "abbreviation",
+                                request.getCountryAbbreviation()));
+
+                user.setCountryId(newCountry.getId());
             }
             if (request.getAddress() != null)
                 user.setAddress(request.getAddress());
