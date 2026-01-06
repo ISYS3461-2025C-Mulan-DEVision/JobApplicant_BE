@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
@@ -48,9 +49,10 @@ public class S3FileService {
                 .bucket(bucketName)
                 .key(key)
                 .contentType(contentType)
+                .acl(ObjectCannedACL.PUBLIC_READ) // Make file publicly accessible
                 .build();
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
-            log.info("File uploaded successfully to S3: {}", key);
+            log.info("File uploaded successfully to S3 (public): {}", key);
             return buildFileUrl(key);
         } catch (Exception e) {
             log.error("Error uploading file to S3: {}", e.getMessage(), e);
