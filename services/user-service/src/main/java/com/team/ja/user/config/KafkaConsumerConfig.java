@@ -57,11 +57,11 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         // Add SASL/SSL Configuration
-        configProps.put("security.protocol", securityProtocol);
-        configProps.put("sasl.mechanism", saslMechanism);
-        if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-            configProps.put("sasl.jaas.config", saslJaasConfig);
-        }
+        // configProps.put("security.protocol", securityProtocol);
+        // configProps.put("sasl.mechanism", saslMechanism);
+        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
+        // configProps.put("sasl.jaas.config", saslJaasConfig);
+        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -84,11 +84,11 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         // Add SASL/SSL Configuration
-        configProps.put("security.protocol", securityProtocol);
-        configProps.put("sasl.mechanism", saslMechanism);
-        if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-            configProps.put("sasl.jaas.config", saslJaasConfig);
-        }
+        // configProps.put("security.protocol", securityProtocol);
+        // configProps.put("sasl.mechanism", saslMechanism);
+        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
+        // configProps.put("sasl.jaas.config", saslJaasConfig);
+        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -105,7 +105,8 @@ public class KafkaConsumerConfig {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        // Use ErrorHandlingDeserializer as a wrapper so deserialization errors are surfaced
+        // Use ErrorHandlingDeserializer as a wrapper so deserialization errors are
+        // surfaced
         // to the container's error handler instead of failing the consumer thread.
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
@@ -116,17 +117,18 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         // Add SASL/SSL Configuration
-        configProps.put("security.protocol", securityProtocol);
-        configProps.put("sasl.mechanism", saslMechanism);
-        if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-            configProps.put("sasl.jaas.config", saslJaasConfig);
-        }
+        // configProps.put("security.protocol", securityProtocol);
+        // configProps.put("sasl.mechanism", saslMechanism);
+        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
+        // configProps.put("sasl.jaas.config", saslJaasConfig);
+        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UserMigrationEvent> userMigrationEventKafkaListenerContainerFactory(CommonErrorHandler migrateErrorHandler) {
+    public ConcurrentKafkaListenerContainerFactory<String, UserMigrationEvent> userMigrationEventKafkaListenerContainerFactory(
+            CommonErrorHandler migrateErrorHandler) {
         ConcurrentKafkaListenerContainerFactory<String, UserMigrationEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(userMigrationEventConsumerFactory());
         factory.setCommonErrorHandler(migrateErrorHandler);

@@ -1,6 +1,10 @@
 {
   "identities": [
     {
+      "name": "anonymous",
+      "actions": ["Read", "List"]
+    },
+    {
       "name": "minioadmin",
       "credentials": [
         {
