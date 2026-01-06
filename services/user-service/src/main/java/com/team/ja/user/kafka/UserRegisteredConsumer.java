@@ -13,6 +13,8 @@ import com.team.ja.user.service.impl.ShardLookupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.UUID;
+
 import org.checkerframework.checker.units.qual.s;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
@@ -30,7 +32,6 @@ public class UserRegisteredConsumer {
 
         private final UserRepository userRepository;
         private final CountryRepository countryRepository;
-        private final ShardingProperties shardingProperties;
 
         /**
          * Handle user registered event.
@@ -42,10 +43,8 @@ public class UserRegisteredConsumer {
                 log.info("Received user-registered event for userId: {} (Country: {})",
                                 event.getUserId(), event.getCountryAbbreviation());
 
-                // 1. Determine shard key first
                 String shardKey = ShardingProperties.resolveShard(event.getCountryAbbreviation());
 
-                // 2. Set the key BEFORE touching any repository
                 ShardContext.setShardKey(shardKey);
                 log.info("Consumer routing thread to shard: {}", shardKey);
 
@@ -70,18 +69,21 @@ public class UserRegisteredConsumer {
                 }
 
                 // Fetch country entity
-                Country country = countryRepository.findByAbbreviationIgnoreCase(event.getCountryAbbreviation())
-                                .orElseThrow(() -> new IllegalArgumentException(
-                                                "Invalid country abbreviation: "
-                                                                + event.getCountryAbbreviation()));
+                UUID countryId = null;
+                String countryCode = event.getCountryAbbreviation();
 
+                if (countryCode != null && !countryCode.isBlank()) {
+                        countryId = countryRepository.findByAbbreviationIgnoreCase(countryCode)
+                                        .map(Country::getId)
+                                        .orElse(null);
+                }
                 // Create new user profile
                 User user = User.builder()
                                 .id(event.getUserId())
                                 .email(event.getEmail())
                                 .firstName(event.getFirstName())
                                 .lastName(event.getLastName())
-                                .countryId(country.getId())
+                                .countryId(countryId)
                                 .phone(event.getPhone())
                                 .address(event.getAddress())
                                 .city(event.getCity())
