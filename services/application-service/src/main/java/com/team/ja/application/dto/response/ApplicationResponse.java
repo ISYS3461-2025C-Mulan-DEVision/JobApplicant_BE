@@ -3,6 +3,7 @@
 package com.team.ja.application.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.team.ja.common.enumeration.DocType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,14 +37,8 @@ public class ApplicationResponse {
     @Schema(description = "Current application status", example = "SUBMITTED")
     private String status;
 
-    @Schema(description = "URL to resume file", example = "https://bucket.s3.amazonaws.com/applications/resume_123.pdf")
-    private String resumeUrl;
-
-    @Schema(description = "URL to cover letter file", example = "https://bucket.s3.amazonaws.com/applications/cover_123.pdf")
-    private String coverLetterUrl;
-
-    @Schema(description = "URLs to additional files", example = "[\"https://bucket.s3.amazonaws.com/applications/cert_123.pdf\"]")
-    private List<String> additionalFiles;
+    @Schema(description = "Available document types in this application", example = "[\"RESUME\", \"COVER_LETTER\"]")
+    private List<DocType> availableDocuments;
 
     @Schema(description = "Application submission timestamp")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")

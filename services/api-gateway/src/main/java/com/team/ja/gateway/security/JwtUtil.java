@@ -110,5 +110,3 @@ public class JwtUtil {
         return new SecretKeySpec(keyBytes, "AES");
     }
 }
-
-

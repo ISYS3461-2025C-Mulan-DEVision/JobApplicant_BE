@@ -1,16 +1,16 @@
 package com.team.ja.user.dto.request;
 
+import com.team.ja.common.validation.annotation.StrictEmail;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.UUID;
 
 /**
  * Request DTO for creating a new user.
@@ -25,7 +25,7 @@ import java.util.UUID;
 public class CreateUserRequest {
 
     @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @StrictEmail
     @Schema(description = "User's email", example = "john.doe@example.com")
     private String email;
 
@@ -44,8 +44,17 @@ public class CreateUserRequest {
     @Schema(description = "User's phone number", example = "+84901234567")
     private String phone;
 
+    @NotNull(message = "Country is required")
     @Schema(description = "Country ID")
     private UUID countryId;
+
+    @Size(max = 255, message = "Address must not exceed 255 characters")
+    @Schema(description = "Street address (name/number)", example = "123 Nguyen Hue Street")
+    private String address;
+
+    @Size(max = 100, message = "City must not exceed 100 characters")
+    @Schema(description = "City name", example = "Ho Chi Minh City")
+    private String city;
 
     @Size(max = 2000, message = "Objective summary must not exceed 2000 characters")
     @Schema(description = "User's objective/summary")

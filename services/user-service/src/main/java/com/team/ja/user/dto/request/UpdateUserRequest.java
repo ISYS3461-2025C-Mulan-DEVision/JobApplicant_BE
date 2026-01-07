@@ -3,12 +3,11 @@ package com.team.ja.user.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.UUID;
 
 /**
  * Request DTO for updating user profile.
@@ -34,8 +33,16 @@ public class UpdateUserRequest {
     @Schema(description = "User's phone number", example = "+84901234567")
     private String phone;
 
-    @Schema(description = "Country ID")
-    private UUID countryId;
+    @Schema(description = "Country Abbreaviation", example = "VN")
+    private String countryAbbreviation;
+
+    @Size(max = 255, message = "Address must not exceed 255 characters")
+    @Schema(description = "Street address (name/number)", example = "123 Nguyen Hue Street")
+    private String address;
+
+    @Size(max = 100, message = "City must not exceed 100 characters")
+    @Schema(description = "City name", example = "Ho Chi Minh City")
+    private String city;
 
     @Size(max = 2000, message = "Objective summary must not exceed 2000 characters")
     @Schema(description = "User's objective/summary")

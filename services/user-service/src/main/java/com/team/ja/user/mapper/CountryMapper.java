@@ -2,6 +2,7 @@ package com.team.ja.user.mapper;
 
 import com.team.ja.user.dto.response.CountryResponse;
 import com.team.ja.user.model.Country;
+
 import org.mapstruct.Mapper;
 
 import java.util.List;
@@ -16,4 +17,3 @@ public interface CountryMapper {
 
     List<CountryResponse> toResponseList(List<Country> countries);
 }
-

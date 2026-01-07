@@ -28,6 +28,10 @@ public class UserEducation extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
+
     @Column(nullable = false)
     private String institution;
 
@@ -37,6 +41,12 @@ public class UserEducation extends BaseEntity {
 
     @Column(nullable = false)
     private String fieldOfStudy;
+
+    @Column
+    private String degree;
+
+    @Column
+    private Double gpa;
 
     @Column(name = "start_at")
     private LocalDate startAt;

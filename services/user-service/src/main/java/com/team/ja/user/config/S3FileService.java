@@ -13,10 +13,12 @@ import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 /**
- * Service for handling file uploads and downloads to/from AWS S3 or a compatible service like SeaweedFS.
+ * Service for handling file uploads and downloads to/from AWS S3 or a
+ * compatible service like SeaweedFS.
  */
 @Slf4j
 @Service
@@ -36,7 +38,8 @@ public class S3FileService {
         return uploadFile(file.getBytes(), file.getOriginalFilename(), file.getContentType(), folder);
     }
 
-    public String uploadFile(InputStream inputStream, String originalFileName, String contentType, String folder) throws IOException {
+    public String uploadFile(InputStream inputStream, String originalFileName, String contentType, String folder)
+            throws IOException {
         byte[] bytes = inputStream.readAllBytes();
         return uploadFile(bytes, originalFileName, contentType, folder);
     }
@@ -45,12 +48,13 @@ public class S3FileService {
         String key = folder + "/" + generateUniqueFileName(originalFileName);
         try {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .contentType(contentType)
-                .build();
+                    .bucket(bucketName)
+                    .key(key)
+                    .contentType(contentType)
+                    .acl(ObjectCannedACL.PUBLIC_READ)
+                    .build();
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
-            log.info("File uploaded successfully to S3: {}", key);
+            log.info("File uploaded successfully to S3 (public): {}", key);
             return buildFileUrl(key);
         } catch (Exception e) {
             log.error("Error uploading file to S3: {}", e.getMessage(), e);
@@ -86,7 +90,11 @@ public class S3FileService {
     }
 
     private String buildFileUrl(String key) {
-        String endpoint = s3Configuration.getEndpoint();
+
+        String endpoint = s3Configuration.getPublicEndpoint();
+        if(endpoint == null || endpoint.isEmpty()) {
+            endpoint = s3Configuration.getEndpoint();
+        }
         if (endpoint != null && !endpoint.isEmpty()) {
             return String.format("%s/%s/%s", endpoint, bucketName, key);
         }

@@ -1,0 +1,18 @@
+{
+  "identities": [
+    {
+      "name": "anonymous",
+      "actions": ["Read", "List"]
+    },
+    {
+      "name": "minioadmin",
+      "credentials": [
+        {
+          "accessKey": "minioadmin",
+          "secretKey": "minioadmin"
+        }
+      ],
+      "actions": ["Read", "Write", "Admin"]
+    }
+  ]
+}

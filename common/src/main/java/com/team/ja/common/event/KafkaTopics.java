@@ -46,6 +46,21 @@ public final class KafkaTopics {
     public static final String APPLICATION_SUBMITTED = "application-submitted";
 
     /**
+     * Topic for new skill added events.
+     * Producer: user-service
+     * Consumer: user-service shards (to sync skill catalog)
+     */
+    public static final String SKILL_CREATED = "skill-created";
+
+    /**
+     * Topic for user migration events.
+     * Producer: user-service
+     * Consumer: user-service shards (to handle user data migration)
+     */
+    public static final String USER_MIGRATION = "user-migration";
+}
+
+    /**
      * Topic for user search profile update events.
      * Producer: user-service
      * Consumer: subscription-service

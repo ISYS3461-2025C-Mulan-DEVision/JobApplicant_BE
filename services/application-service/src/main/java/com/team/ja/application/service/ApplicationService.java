@@ -79,9 +79,9 @@ public interface ApplicationService {
      * @param userId User ID (from JWT token)
      * @param applicationId Application ID
      * @param fileType Type of file (resume, coverLetter, etc.)
-     * @return File URL for download
+     * @return File content as byte array
      */
-    String getApplicationFileUrl(UUID userId, UUID applicationId, String fileType);
+    byte[] downloadApplicationFile(UUID userId, UUID applicationId, String fileType);
 
     // ==================== INTERNAL ENDPOINTS ====================
 

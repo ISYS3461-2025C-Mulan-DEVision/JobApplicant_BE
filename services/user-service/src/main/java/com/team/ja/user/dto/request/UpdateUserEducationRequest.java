@@ -32,6 +32,15 @@ public class UpdateUserEducationRequest {
     @Schema(description = "Field of study", example = "Computer Science")
     private String fieldOfStudy;
 
+    @Size(max = 255, message = "Degree must not exceed 255 characters")
+    @Schema(description = "Degree name", example = "Bachelor of Software Engineering (Hons)")
+    private String degree;
+
+    @jakarta.validation.constraints.Min(value = 0, message = "GPA must be at least 0")
+    @jakarta.validation.constraints.Max(value = 100, message = "GPA must not exceed 100")
+    @Schema(description = "GPA (0-100)", example = "85.5")
+    private Double gpa;
+
     @Schema(description = "Start date", example = "2018-09-01")
     private LocalDate startAt;
 

@@ -32,6 +32,7 @@ public class KafkaProducerConfig {
         // Ensure reliability
         configProps.put(ProducerConfig.ACKS_CONFIG, "all");
         configProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
@@ -40,4 +41,3 @@ public class KafkaProducerConfig {
         return new KafkaTemplate<>(producerFactory());
     }
 }
-

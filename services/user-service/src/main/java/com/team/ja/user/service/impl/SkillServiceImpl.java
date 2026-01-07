@@ -1,9 +1,12 @@
 package com.team.ja.user.service.impl;
 
+import com.team.ja.common.event.SkillCreateEvent;
 import com.team.ja.common.event.UserProfileUpdatedEvent;
 import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
+import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.dto.response.SkillResponse;
+import com.team.ja.user.kafka.SkillCreateProducer;
 import com.team.ja.user.kafka.UserProfileUpdatedProducer;
 import com.team.ja.user.mapper.SkillMapper;
 import com.team.ja.user.model.Skill;
@@ -16,7 +19,9 @@ import com.team.ja.user.service.SkillService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +41,8 @@ public class SkillServiceImpl implements SkillService {
     private final UserRepository userRepository;
     private final UserProfileUpdatedProducer profileUpdatedProducer;
     private final SkillMapper skillMapper;
+    private final SkillCreateProducer skillCreateProducer;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     public List<SkillResponse> getAllSkills() {
@@ -88,9 +95,9 @@ public class SkillServiceImpl implements SkillService {
 
         for (Skill skillToAdd : skills) {
             UserSkill existingRelation = existingUserSkills.stream()
-                .filter(us -> us.getSkillId().equals(skillToAdd.getId()))
-                .findFirst()
-                .orElse(null);
+                    .filter(us -> us.getSkillId().equals(skillToAdd.getId()))
+                    .findFirst()
+                    .orElse(null);
 
             if (existingRelation == null) {
                 // This is a brand new skill for the user
@@ -107,7 +114,7 @@ public class SkillServiceImpl implements SkillService {
             }
             // If the relation exists and is already active, do nothing.
         }
-        
+
         skillRepository.saveAll(skills);
 
         if (skillsChanged) {
@@ -149,7 +156,7 @@ public class SkillServiceImpl implements SkillService {
                 skillRepository.save(skill);
             }
         });
-        
+
         log.info("Removed skill {} from user {}. Publishing event.", skillId, userId);
         List<UUID> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId)
                 .stream()
@@ -183,7 +190,7 @@ public class SkillServiceImpl implements SkillService {
     }
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SkillResponse createSkill(String name) {
         log.info("Creating new skill: {}", name);
 
@@ -204,7 +211,17 @@ public class SkillServiceImpl implements SkillService {
         Skill saved = skillRepository.save(skill);
         log.info("Created skill with ID: {}", saved.getId());
 
+        // Notify other shards about the new skill
+        SkillCreateEvent event = SkillCreateEvent.builder()
+                .skillId(saved.getId())
+                .name(saved.getName())
+                .normalizedName(saved.getNormalizedName())
+                .build();
+
+        skillCreateProducer.sendSkillCreateEvent(event);
+
         return skillMapper.toResponse(saved);
+
     }
 
     private void validateUserExists(UUID userId) {

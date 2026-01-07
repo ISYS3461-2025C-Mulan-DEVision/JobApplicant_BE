@@ -1,6 +1,7 @@
 package com.team.ja.user.service.impl;
 
 import com.team.ja.common.exception.NotFoundException;
+import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.dto.request.CreateUserWorkExperienceRequest;
 import com.team.ja.user.dto.request.UpdateUserWorkExperienceRequest;
 import com.team.ja.user.dto.response.UserWorkExperienceResponse;
@@ -33,21 +34,26 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
     private final CountryRepository countryRepository;
     private final UserWorkExperienceMapper workExperienceMapper;
     private final CountryMapper countryMapper;
+    private final ShardLookupService shardLookupService;
 
     @Override
     @Transactional
     public UserWorkExperienceResponse createWorkExperience(UUID userId, CreateUserWorkExperienceRequest request) {
         log.info("Creating work experience for user: {}", userId);
-        
+
         // Verify user exists
         validateUserExists(userId);
-        
+
+        // Save work experience in the correct shard with the user's shard key
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         // Validate country if provided
         if (request.getCountryId() != null) {
             countryRepository.findById(request.getCountryId())
                     .orElseThrow(() -> new NotFoundException("Country", "id", request.getCountryId().toString()));
         }
-        
+
         UserWorkExperience workExp = UserWorkExperience.builder()
                 .userId(userId)
                 .jobTitle(request.getJobTitle())
@@ -59,21 +65,25 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
                 .isCurrent(request.isCurrent())
                 .description(request.getDescription())
                 .build();
-        
+
         UserWorkExperience saved = workExperienceRepository.save(workExp);
         log.info("Created work experience {} for user {}", saved.getId(), userId);
-        
+
         return mapWithCountry(saved);
     }
 
     @Override
     @Transactional
-    public UserWorkExperienceResponse updateWorkExperience(UUID userId, UUID workExpId, UpdateUserWorkExperienceRequest request) {
+    public UserWorkExperienceResponse updateWorkExperience(UUID userId, UUID workExpId,
+            UpdateUserWorkExperienceRequest request) {
         log.info("Updating work experience {} for user {}", workExpId, userId);
-        
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         UserWorkExperience workExp = workExperienceRepository.findByIdAndUserIdAndIsActiveTrue(workExpId, userId)
                 .orElseThrow(() -> new NotFoundException("Work Experience", "id", workExpId.toString()));
-        
+
         // Update fields if provided
         if (request.getJobTitle() != null) {
             workExp.setJobTitle(request.getJobTitle());
@@ -101,20 +111,23 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
         if (request.getDescription() != null) {
             workExp.setDescription(request.getDescription());
         }
-        
+
         UserWorkExperience saved = workExperienceRepository.save(workExp);
         log.info("Updated work experience {} for user {}", workExpId, userId);
-        
+
         return mapWithCountry(saved);
     }
 
     @Override
     public List<UserWorkExperienceResponse> getWorkExperienceByUserId(UUID userId) {
         log.info("Fetching work experience for user: {}", userId);
-        
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         List<UserWorkExperience> workExperiences = workExperienceRepository
                 .findByUserIdAndIsActiveTrueOrderByStartAtDesc(userId);
-        
+
         return workExperiences.stream()
                 .map(this::mapWithCountry)
                 .toList();
@@ -123,10 +136,13 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
     @Override
     public UserWorkExperienceResponse getWorkExperienceById(UUID userId, UUID workExpId) {
         log.info("Fetching work experience {} for user {}", workExpId, userId);
-        
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         UserWorkExperience workExp = workExperienceRepository.findByIdAndUserIdAndIsActiveTrue(workExpId, userId)
                 .orElseThrow(() -> new NotFoundException("Work Experience", "id", workExpId.toString()));
-        
+
         return mapWithCountry(workExp);
     }
 
@@ -134,17 +150,24 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
     @Transactional
     public void deleteWorkExperience(UUID userId, UUID workExpId) {
         log.info("Deleting work experience {} for user {}", workExpId, userId);
-        
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         UserWorkExperience workExp = workExperienceRepository.findByIdAndUserIdAndIsActiveTrue(workExpId, userId)
                 .orElseThrow(() -> new NotFoundException("Work Experience", "id", workExpId.toString()));
-        
+
         workExp.deactivate();
         workExperienceRepository.save(workExp);
-        
+
         log.info("Deleted work experience {} for user {}", workExpId, userId);
     }
 
     private void validateUserExists(UUID userId) {
+
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
         if (!userRepository.existsById(userId)) {
             throw new NotFoundException("User", "id", userId.toString());
         }
@@ -152,14 +175,13 @@ public class UserWorkExperienceServiceImpl implements UserWorkExperienceService 
 
     private UserWorkExperienceResponse mapWithCountry(UserWorkExperience workExp) {
         UserWorkExperienceResponse response = workExperienceMapper.toResponse(workExp);
-        
+
         if (workExp.getCountryId() != null) {
             countryRepository.findById(workExp.getCountryId())
                     .map(countryMapper::toResponse)
                     .ifPresent(response::setCountry);
         }
-        
+
         return response;
     }
 }
-

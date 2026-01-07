@@ -70,13 +70,6 @@ public class JobApplication extends BaseEntity {
     private String coverLetterUrl;
 
     /**
-     * JSON array of additional file URLs.
-     * Format: ['url1', 'url2', ...]
-     */
-    @Column(columnDefinition = "jsonb")
-    private String additionalFiles;
-
-    /**
      * Timestamp when the application was submitted.
      */
     @Column(nullable = false)

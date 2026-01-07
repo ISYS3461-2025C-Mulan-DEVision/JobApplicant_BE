@@ -31,9 +31,7 @@ public class CreateApplicationRequest {
     @Schema(description = "Resume file (PDF, DOC, DOCX)")
     private MultipartFile resumeFile;
 
-    @Schema(description = "Cover letter file (PDF, DOC, DOCX, optional)")
+    @NotNull(message = "Cover letter file is required")
+    @Schema(description = "Cover letter file (PDF, DOC, DOCX)")
     private MultipartFile coverLetterFile;
-
-    @Schema(description = "Additional files (optional, array of files)")
-    private MultipartFile[] additionalFiles;
 }
