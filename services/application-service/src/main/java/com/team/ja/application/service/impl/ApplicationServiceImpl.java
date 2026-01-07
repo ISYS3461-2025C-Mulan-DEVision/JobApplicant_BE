@@ -9,12 +9,15 @@ import com.team.ja.application.dto.request.UpdateApplicationStatusAdminRequest;
 import com.team.ja.application.dto.request.UpdateApplicationStatusRequest;
 import com.team.ja.application.dto.response.ApplicationResponse;
 import com.team.ja.application.dto.response.ApplicationStatisticsResponse;
+import com.team.ja.application.kafka.ApplicationEventPublisher;
 import com.team.ja.application.mapper.ApplicationMapper;
 import com.team.ja.application.model.JobApplication;
 import com.team.ja.application.repository.JobApplicationRepository;
 import com.team.ja.application.service.ApplicationService;
 import com.team.ja.common.enumeration.ApplicationStatus;
 import com.team.ja.common.enumeration.DocType;
+import com.team.ja.common.event.ApplicationCreatedEvent;
+import com.team.ja.common.event.ApplicationWithdrawnByApplicantEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -44,6 +47,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final JobApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
     private final S3FileService s3FileService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // ==================== PUBLIC ENDPOINTS ====================
 
@@ -77,6 +81,18 @@ public class ApplicationServiceImpl implements ApplicationService {
 
             JobApplication savedApplication = applicationRepository.save(application);
             log.info("Application created successfully: {}", savedApplication.getId());
+
+            // Publish ApplicationCreatedEvent (fire-and-forget pattern)
+            // This event will be consumed by other services (notification-service, subscription-service, etc.)
+            ApplicationCreatedEvent event = ApplicationCreatedEvent.builder()
+                    .applicationId(savedApplication.getId())
+                    .applicantId(userId)
+                    .jobPostId(request.getJobPostId())
+                    .status(savedApplication.getStatus().toString())
+                    .createdAt(savedApplication.getAppliedAt())
+                    .build();
+
+            applicationEventPublisher.publishApplicationCreatedEvent(event);
 
             return applicationMapper.toResponse(savedApplication);
         } catch (IOException e) {
@@ -149,6 +165,17 @@ public class ApplicationServiceImpl implements ApplicationService {
         application.softDelete();
         applicationRepository.save(application);
         log.info("Application withdrawn successfully: {}", applicationId);
+
+        // Publish ApplicationWithdrawnByApplicantEvent (fire-and-forget pattern)
+        // This event will be consumed by other services (notification-service, job-manager, etc.)
+        ApplicationWithdrawnByApplicantEvent event = ApplicationWithdrawnByApplicantEvent.builder()
+                .applicationId(applicationId)
+                .applicantId(userId)
+                .jobPostId(application.getJobPostId())
+                .withdrawnAt(LocalDateTime.now())
+                .build();
+
+        applicationEventPublisher.publishApplicationWithdrawnEvent(event);
     }
 
     @Override
