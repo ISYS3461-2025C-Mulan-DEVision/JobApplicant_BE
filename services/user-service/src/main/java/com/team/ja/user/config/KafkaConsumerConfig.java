@@ -37,15 +37,6 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Value("${spring.kafka.properties.security.protocol:SASL_PLAINTEXT}")
-    private String securityProtocol;
-
-    @Value("${spring.kafka.properties.sasl.mechanism:PLAIN}")
-    private String saslMechanism;
-
-    @Value("${spring.kafka.properties.sasl.jaas.config:}")
-    private String saslJaasConfig;
-
     @Bean
     public ConsumerFactory<String, UserRegisteredEvent> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
@@ -55,13 +46,6 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -82,13 +66,6 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -115,13 +92,6 @@ public class KafkaConsumerConfig {
         // Trust both common events and the DTO package that appears in hosted messages
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event,com.team.ja.user.dto.request");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
