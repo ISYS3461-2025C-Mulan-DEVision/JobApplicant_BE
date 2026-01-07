@@ -28,13 +28,14 @@ public class AdminSearchController {
 
     private final UserClient userClient;
     private final JobManagerClient jobManagerClient;
-    // private final ApplicationClient applicationClient; // Applications usually searched by filters, not global text
+    // private final ApplicationClient applicationClient; // Applications usually
+    // searched by filters, not global text
 
     @GetMapping
     @Operation(summary = "Global search", description = "Search for Applicants, Companies, and Job Posts by name/title")
     public ApiResponse<GlobalSearchResult> globalSearch(
             @RequestParam String query) {
-        
+
         if (query == null || query.trim().isEmpty()) {
             return ApiResponse.success(new GlobalSearchResult());
         }
@@ -59,6 +60,15 @@ public class AdminSearchController {
             }
         });
 
+        CompletableFuture<Object> skillFuture = CompletableFuture.supplyAsync(() -> {
+            try {
+                return userClient.searchSkills(query).getData();
+            } catch (Exception e) {
+                log.error("Error searching skills", e);
+                return null;
+            }
+        });
+
         CompletableFuture<PageResponse<Object>> jobsFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 return jobManagerClient.searchJobPosts(query, null, 0, 5).getData();
@@ -69,12 +79,13 @@ public class AdminSearchController {
         });
 
         try {
-            CompletableFuture.allOf(usersFuture, companiesFuture, jobsFuture).join();
+            CompletableFuture.allOf(usersFuture, companiesFuture, jobsFuture, skillFuture).join();
 
             GlobalSearchResult result = GlobalSearchResult.builder()
                     .applicants(usersFuture.get())
                     .companies(companiesFuture.get())
                     .jobPosts(jobsFuture.get())
+                    .skills(skillFuture.get())
                     .build();
 
             return ApiResponse.success(result);
@@ -91,13 +102,17 @@ public class AdminSearchController {
         private PageResponse<Object> applicants;
         private PageResponse<Object> companies;
         private PageResponse<Object> jobPosts;
-        
-        public GlobalSearchResult() {}
-        
-        public GlobalSearchResult(PageResponse<Object> applicants, PageResponse<Object> companies, PageResponse<Object> jobPosts) {
+        private Object skills;
+
+        public GlobalSearchResult() {
+        }
+
+        public GlobalSearchResult(PageResponse<Object> applicants, PageResponse<Object> companies,
+                PageResponse<Object> jobPosts, Object skills) {
             this.applicants = applicants;
             this.companies = companies;
             this.jobPosts = jobPosts;
+            this.skills = skills;
         }
     }
 }
