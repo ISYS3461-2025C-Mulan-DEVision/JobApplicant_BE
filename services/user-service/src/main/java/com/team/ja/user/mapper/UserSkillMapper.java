@@ -21,4 +21,3 @@ public interface UserSkillMapper {
     @Mapping(target = "createdAt", source = "userSkill.createdAt")
     UserSkillResponse toResponse(UserSkill userSkill, Skill skill);
 }
-

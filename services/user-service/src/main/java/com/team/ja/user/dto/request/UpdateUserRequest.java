@@ -28,32 +28,23 @@ public class UpdateUserRequest {
     @Schema(description = "User's last name", example = "Doe")
     private String lastName;
 
-    @Pattern(
-        regexp = "^\\+[0-9]{1,12}$",
-        message = "Phone number must start with '+' followed by up to 12 digits."
-    )
+    @Pattern(regexp = "^\\+[0-9]{1,12}$", message = "Phone number must start with '+' followed by up to 12 digits.")
     @Size(max = 20, message = "Phone must not exceed 20 characters")
     @Schema(description = "User's phone number", example = "+84901234567")
     private String phone;
 
-    @Schema(description = "Country ID")
-    private UUID countryId;
+    @Schema(description = "Country Abbreaviation", example = "VN")
+    private String countryAbbreviation;
 
     @Size(max = 255, message = "Address must not exceed 255 characters")
-    @Schema(
-        description = "Street address (name/number)",
-        example = "123 Nguyen Hue Street"
-    )
+    @Schema(description = "Street address (name/number)", example = "123 Nguyen Hue Street")
     private String address;
 
     @Size(max = 100, message = "City must not exceed 100 characters")
     @Schema(description = "City name", example = "Ho Chi Minh City")
     private String city;
 
-    @Size(
-        max = 2000,
-        message = "Objective summary must not exceed 2000 characters"
-    )
+    @Size(max = 2000, message = "Objective summary must not exceed 2000 characters")
     @Schema(description = "User's objective/summary")
     private String objectiveSummary;
 }

@@ -13,7 +13,8 @@ import java.util.UUID;
  *
  * Auth Integration Notes:
  * - createUser: Called by auth-service after successful registration
- * - updateUser: userId will come from JWT token (authenticated user can only update their own profile)
+ * - updateUser: userId will come from JWT token (authenticated user can only
+ * update their own profile)
  * - deactivateUser: Admin only, or user deactivating their own account
  * - getUserById: Public for basic info, full profile requires authentication
  */
@@ -31,7 +32,7 @@ public interface UserService {
      * Update user profile.
      * Auth: User can only update their own profile.
      *
-     * @param userId User ID (from JWT token in production)
+     * @param userId  User ID (from JWT token in production)
      * @param request Update data
      * @return Updated user response
      */
@@ -39,14 +40,14 @@ public interface UserService {
 
     /**
      * Upload and update user avatar.
+     * 
      * @param userId User ID
-     * @param file Image file for the avatar
+     * @param file   Image file for the avatar
      * @return Updated user response
      */
     UserResponse uploadAvatar(
-        UUID userId,
-        org.springframework.web.multipart.MultipartFile file
-    );
+            UUID userId,
+            org.springframework.web.multipart.MultipartFile file);
 
     /**
      * Get user by ID.
@@ -80,51 +81,59 @@ public interface UserService {
      * @return List of users
      */
     List<UserResponse> getAllUsers();
+
     PageResponse<UserResponse> getAllUsersPaged(int page, int size);
 
     /**
      * Search for users based on criteria.
      *
-     * @param skills Comma-separated list of skills
-     * @param country Country code
+     * @param skills   Comma-separated list of skills
+     * @param country  Country code
      * @param username Username text (firstName/lastName) for search
      * @return List of matching users
      */
     List<UserResponse> searchUsers(
-        String skills,
-        String country,
-        String city,
-        String education,
-        String workExperience,
-        String employmentTypes,
-        String username
-    );
+            String skills,
+            String country,
+            String city,
+            String education,
+            String workExperience,
+            String employmentTypes,
+            String username);
 
     /**
      * Paginated search combining filters and username text.
      *
-     * @param skills           Comma-separated skill names (OR semantics)
-     * @param country          Two-letter country abbreviation (e.g., US, VN). If both city and country provided, city is prioritized.
-     * @param city             City name (case-insensitive contains). Mutually exclusive with country; city is prioritized when both provided.
-     * @param education        Education level filter (e.g., BACHELOR, MASTER, DOCTORATE)
-     * @param workExperience   Work experience filter. Supports NONE, ANY, or comma-separated keywords (case-insensitive contains across jobTitle/companyName/description)
-     * @param employmentTypes  Comma-separated employment types (e.g., FULL_TIME,CONTRACT)
-     * @param username         Comma-separated tokens to match against firstName/lastName/fullName (case-insensitive contains)
-     * @param page             0-based page number
-     * @param size             page size
+     * @param skills          Comma-separated skill names (OR semantics)
+     * @param country         Two-letter country abbreviation (e.g., US, VN). If
+     *                        both city and country provided, city is prioritized.
+     * @param city            City name (case-insensitive contains). Mutually
+     *                        exclusive with country; city is prioritized when both
+     *                        provided.
+     * @param education       Education level filter (e.g., BACHELOR, MASTER,
+     *                        DOCTORATE)
+     * @param workExperience  Work experience filter. Supports NONE, ANY, or
+     *                        comma-separated keywords (case-insensitive contains
+     *                        across jobTitle/companyName/description)
+     * @param employmentTypes Comma-separated employment types (e.g.,
+     *                        FULL_TIME,CONTRACT)
+     * @param username        Comma-separated tokens to match against
+     *                        firstName/lastName/fullName (case-insensitive
+     *                        contains)
+     * @param page            0-based page number
+     * @param size            page size
      * @return Paginated result
      */
     PageResponse<UserResponse> searchUsersPaged(
-        String skills,
-        String country,
-        String city,
-        String education,
-        String workExperience,
-        String employmentTypes,
-        String username,
-        int page,
-        int size
-    );
+            String skills,
+            String country,
+            String city,
+            String education,
+            String workExperience,
+            String employmentTypes,
+            String username,
+            int page,
+            int size);
 
     /**
      * Deactivate (soft delete) a user.

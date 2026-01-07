@@ -43,6 +43,9 @@ public class S3Configuration {
     @Value("${aws.s3.endpoint:}")
     private String endpoint;
 
+    @Value("${aws.s3.public-endpoint:}")
+    private String publicEndpoint;
+
     /**
      * Provide a shared S3Client for all services.
      */
@@ -68,7 +71,6 @@ public class S3Configuration {
         } else {
             log.info("[S3] Using AWS S3 endpoint");
         }
-
         // Path-style for compatibility
         builder.forcePathStyle(true);
 

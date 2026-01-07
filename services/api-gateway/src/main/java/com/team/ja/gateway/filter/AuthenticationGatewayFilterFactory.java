@@ -3,6 +3,7 @@ package com.team.ja.gateway.filter;
 import com.team.ja.gateway.config.RouteValidator;
 import com.team.ja.gateway.security.JwtUtil;
 import com.team.ja.gateway.security.TokenBlacklistService;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
@@ -20,13 +21,15 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Component
-public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<AuthenticationGatewayFilterFactory.Config> {
+public class AuthenticationGatewayFilterFactory
+        extends AbstractGatewayFilterFactory<AuthenticationGatewayFilterFactory.Config> {
 
     private final JwtUtil jwtUtil;
     private final RouteValidator routeValidator;
     private final TokenBlacklistService blacklistService;
 
-    public AuthenticationGatewayFilterFactory(JwtUtil jwtUtil, RouteValidator routeValidator, TokenBlacklistService blacklistService) {
+    public AuthenticationGatewayFilterFactory(JwtUtil jwtUtil, RouteValidator routeValidator,
+            TokenBlacklistService blacklistService) {
         super(Config.class);
         this.jwtUtil = jwtUtil;
         this.routeValidator = routeValidator;
@@ -37,7 +40,7 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
-            
+
             // Skip authentication for public endpoints
             if (!routeValidator.isSecured.test(request)) {
                 log.debug("Public endpoint accessed: {}", request.getURI().getPath());
@@ -53,7 +56,7 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
             }
 
             String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-            
+
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 log.warn("Invalid Authorization header format");
                 return onError(exchange, "Invalid Authorization header format", HttpStatus.UNAUTHORIZED);
@@ -70,28 +73,28 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
             // Check if token is blacklisted (logged out)
             String jti = jwtUtil.extractJti(token);
             return blacklistService.isBlacklisted(jti)
-                .flatMap(isBlacklisted -> {
-                    if (isBlacklisted) {
-                        log.warn("Revoked JWT token used for access attempt. JTI: {}", jti);
-                        return onError(exchange, "Token has been revoked", HttpStatus.UNAUTHORIZED);
-                    }
+                    .flatMap(isBlacklisted -> {
+                        if (isBlacklisted) {
+                            log.warn("Revoked JWT token used for access attempt. JTI: {}", jti);
+                            return onError(exchange, "Token has been revoked", HttpStatus.UNAUTHORIZED);
+                        }
 
-                    // Extract user info and add to headers
-                    String userId = jwtUtil.extractUserId(token);
-                    String username = jwtUtil.extractUsername(token);
-                    String role = jwtUtil.extractRole(token);
+                        // Extract user info and add to headers
+                        String userId = jwtUtil.extractUserId(token);
+                        String username = jwtUtil.extractUsername(token);
+                        String role = jwtUtil.extractRole(token);
 
-                    log.info("Authenticated request from user: {} ({})", username, userId);
+                        log.info("Authenticated request from user: {} ({})", username, userId);
 
-                    // Forward user info to downstream services
-                    ServerHttpRequest modifiedRequest = request.mutate()
-                            .header("X-User-Id", userId != null ? userId : "")
-                            .header("X-User-Email", username != null ? username : "")
-                            .header("X-User-Role", role != null ? role : "")
-                            .build();
+                        // Forward user info to downstream services
+                        ServerHttpRequest modifiedRequest = request.mutate()
+                                .header("X-User-Id", userId != null ? userId : "")
+                                .header("X-User-Email", username != null ? username : "")
+                                .header("X-User-Role", role != null ? role : "")
+                                .build();
 
-                    return chain.filter(exchange.mutate().request(modifiedRequest).build());
-                });
+                        return chain.filter(exchange.mutate().request(modifiedRequest).build());
+                    });
         };
     }
 
@@ -99,11 +102,11 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(status);
         response.getHeaders().add("Content-Type", "application/json");
-        
+
         String body = String.format(
                 "{\"success\":false,\"message\":\"%s\",\"errorCode\":\"UNAUTHORIZED\",\"status\":%d}",
                 message, status.value());
-        
+
         return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes())));
     }
 
@@ -116,4 +119,3 @@ public class AuthenticationGatewayFilterFactory extends AbstractGatewayFilterFac
         // Configuration properties can be added here
     }
 }
-
