@@ -1,18 +1,23 @@
 package com.team.ja.subscription.kafka;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.team.ja.common.enumeration.PaymentStatus;
 import com.team.ja.common.enumeration.SubscriptionStatus;
 import com.team.ja.common.event.KafkaTopics;
+import com.team.ja.common.event.PaymentCompletedEvent;
+import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.subscription.dto.response.PaymentResponse;
-import com.team.ja.subscription.model.subscription.UserSubscription;
-import com.team.ja.subscription.repository.UserSubscriptionRepository;
+import com.team.ja.subscription.model.UserSubscription;
+import com.team.ja.subscription.repository.SubscriptionRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,75 +33,133 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SubscriptionConsumer {
 
-    private final UserSubscriptionRepository userSubscriptionRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final KafkaTemplate<String, SubscriptionActivateEvent> kafkaTemplate;
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_RESPONSE, groupId = "${spring.kafka.consumer.group-id}")
-    public void handlePaymentResponse(PaymentResponse response) {
-        log.info("Received payment response: {}", response);
-        // Process and update subscription/payment status accordingly
-        if (response.getPaymentStatus().equals(PaymentStatus.SUCCEEDED)) {
-            log.info("Payment successful, updating subscription status.");
-            // Update subscription status to active
-            UUID userId = response.getUserId();
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "${spring.kafka.consumer.group-id}")
+    public void handlePaymentResponse(PaymentCompletedEvent event) {
 
-            // Find if the user have any pending subscriptions
-            List<UserSubscription> pending = userSubscriptionRepository.findByUserIdAndSubscriptionStatus(userId,
-                    SubscriptionStatus.PENDING.name());
+        log.info("Received payment completed response for subscription processing: {}", event);
+        // Fetch user subscriptions, this should have 1 active subscription and possibly
+        // old inactive ones
+        List<UserSubscription> subscriptions = subscriptionRepository
+                .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
 
-            // user should have only one pending subscription at most (the logic is for
-            // safety)
-            if (!pending.isEmpty()) {
-                // Activate the first pending subscription and set end date (extend by 30 days)
-                UserSubscription subscription = pending.get(0);
-                subscription.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+        // If no active subscription found, create one, this should not happen normally
+        if (subscriptions.isEmpty()) {
+            log.warn("No active subscriptions found for user ID: {}", event.getPayerId());
+            UserSubscription subscription = new UserSubscription();
+            // Set user ID
+            subscription.setUserId(event.getPayerId());
+            // Set subscription status (completed = active)
+            subscription.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+            // Set start date to today
+            subscription.setSubscriptionStartDate(LocalDate.now());
+            // Set end date to 1 month from today
+            subscription.setSubscriptionEndDate(LocalDate.now().plusMonths(1));
+            // Set created timestamps
+            subscription.setCreatedAt(LocalDateTime.now());
+            // Set updated timestamps
+            subscription.setUpdatedAt(LocalDateTime.now());
+            // Save new subscription
+            subscriptionRepository.save(subscription);
+            log.info("Created new active subscription for user ID: {}", event.getPayerId());
 
-                // Set start date to today if not set
-                LocalDate now = LocalDate.now();
-                if (subscription.getSubscriptionStartDate() == null) {
-                    subscription.setSubscriptionStartDate(now);
+        }
+
+        // If active subscription(s) found, extend the end date by 1 month
+        if (!subscriptions.isEmpty()) {
+            for (UserSubscription subscription : subscriptions) {
+                if (subscription.getSubscriptionEndDate() != null) {
+                    LocalDate oldEndDate = subscription.getSubscriptionEndDate();
+                    subscription.setSubscriptionEndDate(oldEndDate.plusMonths(1));
+                    // Update updated timestamp
+                    subscription.setUpdatedAt(LocalDateTime.now());
+                    subscriptionRepository.save(subscription);
+                    log.info("Extended subscription ID: {} end date from {} to {}",
+                            subscription.getId(), oldEndDate, subscription.getSubscriptionEndDate());
+                } else {
+                    if (subscription.getSubscriptionStartDate() == null && subscription.getSubscriptionEndDate() == null
+                            && subscription.getSubscriptionStatus() == SubscriptionStatus.PENDING) {
+                        subscription.setSubscriptionStartDate(LocalDate.now());
+                        subscription.setSubscriptionEndDate(LocalDate.now().plusMonths(1));
+                        subscription.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
+                        // Update updated timestamp
+                        subscription.setUpdatedAt(LocalDateTime.now());
+                        subscriptionRepository.save(subscription);
+                    }
                 }
-
-                // Extend end date by 30 days from today or from existing end date
-                LocalDate base = subscription.getSubscriptionEndDate() != null
-                        && subscription.getSubscriptionEndDate().isAfter(now)
-                                ? subscription.getSubscriptionEndDate()
-                                : now;
-                subscription.setSubscriptionEndDate(base.plusDays(30));
-                userSubscriptionRepository.save(subscription);
-                log.info("Activated subscription id={} for userId={}", subscription.getId(), userId);
-                return;
+                log.info("Updated subscription ID: {} for user ID: {}",
+                        subscription.getId(), event.getPayerId());
             }
 
-            // If no pending subscription found, try to extend an active subscription
-            List<UserSubscription> active = userSubscriptionRepository.findByUserIdAndSubscriptionStatus(userId,
-                    SubscriptionStatus.ACTIVE.name());
-            if (!active.isEmpty()) {
-                UserSubscription sub = active.get(0);
-                LocalDate now = LocalDate.now();
-                LocalDate base = sub.getSubscriptionEndDate() != null && sub.getSubscriptionEndDate().isAfter(now)
-                        ? sub.getSubscriptionEndDate()
-                        : now;
-                sub.setSubscriptionEndDate(base.plusDays(30));
-                userSubscriptionRepository.save(sub);
-                log.info("Extended subscription id={} for userId={}", sub.getId(), userId);
-                return;
+        }
+
+        // Publish subscription changed event to notify other services
+        kafkaTemplate.send(KafkaTopics.SUBSCRIPTION_ACTIVATE, SubscriptionActivateEvent.builder()
+                .payerId(event.getPayerId())
+                .build());
+        log.info("Published premium activation event for user ID: {}",
+                event.getPayerId());
+
+    }
+
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_FAILED, groupId = "${spring.kafka.consumer.group-id}")
+    public void handlePaymentFailed(PaymentCompletedEvent event) {
+
+        log.info("Received payment failed response for subscription processing: {}", event);
+        // Fetch user subscriptions, this should have 1 active subscription and possibly
+        // old inactive ones
+        List<UserSubscription> subscriptions = subscriptionRepository
+                .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
+
+        // If active subscription found, set to INACTIVE
+        if (!subscriptions.isEmpty()) {
+            for (UserSubscription subscription : subscriptions) {
+                if (subscription.getSubscriptionEndDate() != LocalDate.now()
+                        && subscription.getSubscriptionEndDate().isAfter(LocalDate.now())) {
+                    // TODO: Implement grace period notification logic here
+                    log.info(
+                            "Subscription ID: {} is still within valid period until {}, consider grace period handling",
+                            subscription.getId(), subscription.getSubscriptionEndDate());
+                    subscription.setUpdatedAt(LocalDateTime.now());
+                    subscriptionRepository.save(subscription);
+                }
+                log.info("Deactivated subscription ID: {} due to payment failure",
+                        subscription.getId());
             }
-
-            // If no subscription exists, create a new active subscription record
-            UserSubscription newSub = new UserSubscription();
-            newSub.setUserId(response.getUserId());
-            newSub.setSubscriptionStatus(SubscriptionStatus.ACTIVE);
-            LocalDate start = LocalDate.now();
-            newSub.setSubscriptionStartDate(start);
-            newSub.setSubscriptionEndDate(start.plusDays(30));
-            userSubscriptionRepository.save(newSub);
-            log.info("Created and activated new subscription for userId={}", userId);
-
         } else {
-            log.warn("Payment failed, subscription remains inactive.");
-            // Handle payment failure scenario
-
+            log.warn("No active subscriptions found for user ID: {}",
+                    event.getPayerId());
         }
     }
 
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_CANCELLED, groupId = "${spring.kafka.consumer.group-id}")
+    public void handlePaymentCancelled(PaymentCompletedEvent event) {
+
+        log.info("Received payment cancelled response for subscription processing: {}", event);
+        // Fetch user subscriptions, this should have 1 active subscription and possibly
+        // old inactive ones
+        List<UserSubscription> subscriptions = subscriptionRepository
+                .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
+
+        // If active subscription found, check for subscription end date and notify user
+        // This is a hard cancellation, so we set to INACTIVE
+        if (!subscriptions.isEmpty()) {
+            for (UserSubscription subscription : subscriptions) {
+                if (subscription.getSubscriptionEndDate() != LocalDate.now()
+                        && subscription.getSubscriptionEndDate().isAfter(LocalDate.now())) {
+                    // TODO: Implement cancellation notification logic here
+                    log.info(
+                            "Subscription ID: {} is still within valid period until {}, notifying user of cancellation",
+                            subscription.getId(), subscription.getSubscriptionEndDate());
+                    subscription.setUpdatedAt(LocalDateTime.now());
+                    subscriptionRepository.save(subscription);
+                }
+            }
+        } else {
+            log.warn("No active subscriptions found for user ID: {}",
+                    event.getPayerId());
+        }
+    }
 }

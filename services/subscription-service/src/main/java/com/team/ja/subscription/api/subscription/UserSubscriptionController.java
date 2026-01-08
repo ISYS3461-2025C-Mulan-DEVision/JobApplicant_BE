@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/v1/subscriptions")
@@ -42,6 +44,13 @@ public class UserSubscriptionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Deactivate (soft-delete) subscription")
     public void deactivate(@PathVariable UUID id) {
-        subscriptionService.deactivate(id);
+        subscriptionService.userDeactivate(id);
     }
+
+    @PostMapping("/{id}/{subscriptionId}")
+    public ApiResponse<SubscriptionResponse> reactivate(@PathVariable UUID id, @PathVariable UUID subscriptionId) {
+        subscriptionService.userReactivate(id, subscriptionId);
+        return ApiResponse.success("Subscription reactivated");
+    }
+
 }

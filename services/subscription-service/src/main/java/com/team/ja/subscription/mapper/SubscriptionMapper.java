@@ -2,7 +2,8 @@ package com.team.ja.subscription.mapper;
 
 import com.team.ja.subscription.dto.request.CreateSubscriptionRequest;
 import com.team.ja.subscription.dto.response.SubscriptionResponse;
-import com.team.ja.subscription.model.subscription.UserSubscription;
+import com.team.ja.subscription.model.UserSubscription;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

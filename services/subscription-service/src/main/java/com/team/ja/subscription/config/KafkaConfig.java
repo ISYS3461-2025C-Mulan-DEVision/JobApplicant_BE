@@ -117,12 +117,11 @@ public class KafkaConfig {
     }
 
     /**
-     * KafkaTemplate specialized for UserSearchProfileUpdateEvent so producers can
-     * autowire the typed template.
+     * Kafka template for sending general messages.
      */
     @Bean
-    public KafkaTemplate<String, com.team.ja.common.event.UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate(
-            ProducerFactory<String, com.team.ja.common.event.UserSearchProfileUpdateEvent> userSearchProfileProducerFactory) {
-        return new KafkaTemplate<>(userSearchProfileProducerFactory);
+    public KafkaTemplate<String, Object> kafkaTemplate(
+            ProducerFactory<String, Object> producerFactory) {
+        return new KafkaTemplate<>(producerFactory);
     }
 }

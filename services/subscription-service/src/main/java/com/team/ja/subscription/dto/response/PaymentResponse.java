@@ -18,20 +18,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PaymentResponse {
 
-    private UUID invoiceId;
+    /**
+     * The unique identifier for the invoice payment
+     */
+    private UUID paymentId;
 
-    private UUID userId;
+    /**
+     * Secret identifier for the payment
+     */
+    private String clientSecret;
 
-    private PayerType payerType;
-
-    private String payerEmail;
-
-    private BigDecimal amount;
-
-    private PaymentStatus paymentStatus;
-
-    private PaymentProcessor paymentProcessor;
-
-    private UUID transactionId;
+    /**
+     * The Stripe payment intent ID
+     */
+    private String paymentIntentId;
 
 }

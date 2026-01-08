@@ -13,6 +13,7 @@ public enum PaymentStatus {
 
     SUCCEEDED("Succeeded", "The payment was successful"),
     PENDING("Pending", "The payment is pending"),
+    CANCELLED("Cancelled", "The payment was cancelled"),
     FAILED("Failed", "The payment failed");
 
     private String displayName;

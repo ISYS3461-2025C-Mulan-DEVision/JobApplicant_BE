@@ -632,6 +632,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_PASSWORD}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+      SPRING_KAFKA_CONSUMER_GROUP: ${SUBSCRIPTION_SERVICE_KAFKA_CONSUMER_GROUP}
+      FEIGN_CLIENT_PAYMENT_SERVICE_URL: ${FEIGN_CLIENT_PAYMENT_SERVICE_URL}
     depends_on:
       subscription-db:
         condition: service_healthy
@@ -639,31 +642,7 @@ services:
         condition: service_healthy
     networks:
       - ja-network
-    subscription-service:
-        build:
-            context: ./services/subscription-service
-            dockerfile: Dockerfile
-        container_name: ja-subscription-service
-        ports:
-            - "${SUBSCRIPTION_SERVICE_PORT}:8087"
-        environment:
-            SPRING_APPLICATION_NAME: ${SUBSCRIPTION_SERVICE_SPRING_APPLICATION_NAME}
-            SERVER_PORT: ${SUBSCRIPTION_SERVICE_SERVER_PORT}
-            SPRING_PROFILES_ACTIVE: ${SUBSCRIPTION_SERVICE_SPRING_PROFILES_ACTIVE}
-            SPRING_DATASOURCE_URL: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_URL}
-            SPRING_DATASOURCE_USERNAME: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_USERNAME}
-            SPRING_DATASOURCE_PASSWORD: ${SUBSCRIPTION_SERVICE_SPRING_DATASOURCE_PASSWORD}
-            SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
-            SPRING_KAFKA_CONSUMER_GROUP: ${SUBSCRIPTION_SERVICE_KAFKA_CONSUMER_GROUP}
-            EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
-        depends_on:
-            subscription-db:
-                condition: service_healthy
-            eureka-server:
-                condition: service_healthy
-        networks:
-            - ja-network
-
+      
   admin-service:
     build:
       context: ./services/admin-service

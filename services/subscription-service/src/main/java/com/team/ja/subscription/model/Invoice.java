@@ -1,4 +1,4 @@
-package com.team.ja.subscription.model.payment;
+package com.team.ja.subscription.model;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -29,13 +29,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Invoice extends BaseEntity {
-
-    /**
-     * The unique identifier for the invoice payment
-     */
-    @Column(name = "invoice_id", nullable = false, unique = true)
-    @Schema(description = "The unique identifier for the invoice payment")
-    private UUID invoiceId;
 
     /**
      * The ID of the user associated with this invoice payment
@@ -73,6 +66,13 @@ public class Invoice extends BaseEntity {
     @Column(name = "payment_status", nullable = false)
     @Schema(description = "The status of the payment")
     private PaymentStatus paymentStatus;
+
+    /**
+     * The currency of the payment
+     */
+    @Column(name = "currency", nullable = true)
+    @Schema(description = "The currency of the payment")
+    private String currency;
 
     /**
      * The type of the payment processor

@@ -36,7 +36,14 @@ public final class KafkaTopics {
      * Producer: subscription-service
      * Consumer: user-service (to update premium status)
      */
-    public static final String SUBSCRIPTION_CHANGED = "subscription-changed";
+    public static final String SUBSCRIPTION_ACTIVATE = "subscription-activate";
+
+    /**
+     * Topic for subscription deactivation events.
+     * Producer: subscription-service
+     * Consumer: user-service (to update premium status)
+     */
+    public static final String SUBSCRIPTION_DEACTIVATE = "subscription-deactivate";
 
     /**
      * Topic for application submitted events.
@@ -58,7 +65,6 @@ public final class KafkaTopics {
      * Consumer: user-service shards (to handle user data migration)
      */
     public static final String USER_MIGRATION = "user-migration";
-}
 
     /**
      * Topic for user search profile update events.
@@ -68,18 +74,25 @@ public final class KafkaTopics {
     public static final String USER_SEARCH_PROFILE_UPDATED = "user-search-profile-updated";
 
     /**
-     * Topic for payment request.
-     * Producer: subscription-service
-     * Consumer: jm-payment-service
-     */
-    public static final String APPLICANT_PAYMENT_REQUEST = "applicant-payment-request";
-
-    /**
-     * Topic for payment response.
+     * Topic for payment success response.
      * Producer: jm-payment-service
      * Consumer: subscription-service
      */
-    public static final String APPLICANT_PAYMENT_RESPONSE = "applicant-payment-response";
+    public static final String APPLICANT_PAYMENT_COMPLETED = "payment.completed";
+
+    /**
+     * Topic for payment failure response.
+     * Producer: jm-payment-service
+     * Consumer: subscription-service
+     */
+    public static final String APPLICANT_PAYMENT_FAILED = "payment.failed";
+
+    /**
+     * Topic for payment cancelled response.
+     * Producer: subscription-service
+     * Consumer: user-service
+     */
+    public static final String APPLICANT_PAYMENT_CANCELLED = "payment.cancelled";
 
     /**
      * Topic for enabling user premium status.

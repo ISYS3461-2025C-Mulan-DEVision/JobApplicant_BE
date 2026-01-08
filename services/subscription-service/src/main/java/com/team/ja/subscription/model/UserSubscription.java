@@ -1,4 +1,4 @@
-package com.team.ja.subscription.model.subscription;
+package com.team.ja.subscription.model;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -54,4 +54,9 @@ public class UserSubscription extends BaseEntity {
     @Column(name = "subscription_end_date", nullable = false)
     @Schema(description = "The end date of the subscription")
     private LocalDate subscriptionEndDate;
+
+    public UserSubscription orElseThrow(Object object) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'orElseThrow'");
+    }
 }
