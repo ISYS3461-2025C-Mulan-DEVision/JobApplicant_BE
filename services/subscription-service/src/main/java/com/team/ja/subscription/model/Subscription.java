@@ -20,12 +20,12 @@ import lombok.Setter;
  * Contains user subscription information for subscription service.
  */
 @Entity
-@Table(name = "user_subscriptions")
+@Table(name = "subscriptions")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserSubscription extends BaseEntity {
+public class Subscription extends BaseEntity {
 
     /**
      * The ID of the user associated with this subscription
@@ -54,9 +54,4 @@ public class UserSubscription extends BaseEntity {
     @Column(name = "subscription_end_date", nullable = false)
     @Schema(description = "The end date of the subscription")
     private LocalDate subscriptionEndDate;
-
-    public UserSubscription orElseThrow(Object object) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'orElseThrow'");
-    }
 }

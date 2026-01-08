@@ -2,6 +2,7 @@ package com.team.ja.user.config;
 
 import com.team.ja.common.event.SkillCreateEvent;
 import com.team.ja.common.event.UserMigrationEvent;
+import com.team.ja.common.event.UserProfileCreateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -117,5 +118,25 @@ public class KafkaConsumerConfig {
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
 
         return errorHandler;
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserProfileCreateEvent> userProfileCreateEventConsumerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(configProps);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> userProfileCreateEventKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(userProfileCreateEventConsumerFactory());
+        return factory;
     }
 }

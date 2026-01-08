@@ -1,6 +1,10 @@
 package com.team.ja.subscription.config;
 
+import com.team.ja.common.event.SubscriptionActivateEvent;
+import com.team.ja.common.event.SubscriptionDeactivateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
+import com.team.ja.common.event.UserSearchProfileUpdateEvent;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -108,7 +112,7 @@ public class KafkaConfig {
      * Producer factory for UserSearchProfileUpdateEvent messages.
      */
     @Bean
-    public ProducerFactory<String, com.team.ja.common.event.UserSearchProfileUpdateEvent> userSearchProfileProducerFactory() {
+    public ProducerFactory<String, UserSearchProfileUpdateEvent> userSearchProfileProducerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -117,11 +121,80 @@ public class KafkaConfig {
     }
 
     /**
+     * Generic Producer factory for Object type messages.
+     * 
+     * @param producerFactory
+     * @return
+     */
+    @Bean
+    public ProducerFactory<String, Object> genericProducerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(props);
+    }
+
+    /**
+     * Producer factory for SubscriptionActivateEvent messages.
+     * 
+     * @param ProducerFactory
+     * @return
+     */
+    @Bean
+    public ProducerFactory<String, SubscriptionActivateEvent> subscriptionActivateProducerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(props);
+    }
+
+    /**
+     * Producer factory for SubscriptionDeactivateEvent messages.
+     * 
+     * @param subscriptionDeactivateProducerFactory
+     * @return
+     */
+    @Bean
+    public ProducerFactory<String, SubscriptionDeactivateEvent> subscriptionDeactivateProducerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        return new DefaultKafkaProducerFactory<>(props);
+    }
+
+    /**
+     * Kafka template for SubscriptionDeactivateEvents messages.
+     * 
+     * @param subscriptionDeactivateProducerFactory
+     * @return
+     */
+    @Bean
+    public KafkaTemplate<String, SubscriptionDeactivateEvent> subscriptionDeactivateKafkaTemplate(
+            ProducerFactory<String, SubscriptionDeactivateEvent> subscriptionDeactivateProducerFactory) {
+        return new KafkaTemplate<>(subscriptionDeactivateProducerFactory);
+    }
+
+    /**
+     * Kafka template for SubscriptionActivateEvent messages.
+     * 
+     * @param genericProducerFactory
+     * @return
+     */
+    @Bean
+    public KafkaTemplate<String, SubscriptionActivateEvent> subscriptionActivateKafkaTemplate(
+            ProducerFactory<String, SubscriptionActivateEvent> subscriptionActivateProducerFactory) {
+        return new KafkaTemplate<>(subscriptionActivateProducerFactory);
+    }
+
+    /**
      * Kafka template for sending general messages.
      */
     @Bean
-    public KafkaTemplate<String, Object> kafkaTemplate(
-            ProducerFactory<String, Object> producerFactory) {
-        return new KafkaTemplate<>(producerFactory);
+    public KafkaTemplate<String, Object> genericKafkaTemplate(
+            ProducerFactory<String, Object> genericProducerFactory) {
+        return new KafkaTemplate<>(genericProducerFactory);
     }
 }

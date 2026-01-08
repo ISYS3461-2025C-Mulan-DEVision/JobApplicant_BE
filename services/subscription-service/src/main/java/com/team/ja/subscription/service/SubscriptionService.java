@@ -3,7 +3,7 @@ package com.team.ja.subscription.service;
 import com.team.ja.subscription.dto.request.CreateSubscriptionRequest;
 import com.team.ja.subscription.dto.request.UpdateSubscriptionRequest;
 import com.team.ja.subscription.dto.response.SubscriptionResponse;
-import com.team.ja.subscription.model.UserSubscription;
+import com.team.ja.subscription.model.Subscription;
 
 import java.util.UUID;
 
@@ -29,5 +29,5 @@ public interface SubscriptionService {
      */
     void userDeactivate(UUID id);
 
-    UserSubscription userReactivate(UUID userId, UUID subscriptionId);
+    Subscription userReactivate(UUID userId, UUID subscriptionId);
 }

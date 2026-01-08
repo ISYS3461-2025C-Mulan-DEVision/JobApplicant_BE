@@ -4,16 +4,15 @@ import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.subscription.dto.request.CreateSubscriptionRequest;
 import com.team.ja.subscription.dto.request.UpdateSubscriptionRequest;
 import com.team.ja.subscription.dto.response.SubscriptionResponse;
-import com.team.ja.subscription.mapper.SubscriptionMapper;
-import com.team.ja.subscription.model.UserSubscription;
+import com.team.ja.subscription.model.Subscription;
 import com.team.ja.subscription.repository.SubscriptionRepository;
 import com.team.ja.common.enumeration.SubscriptionStatus;
 import com.team.ja.common.event.KafkaTopics;
+import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.common.event.SubscriptionDeactivateEvent;
 import com.team.ja.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,14 +36,17 @@ import java.util.UUID;
 public class SubscriptionServiceImpl implements SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
-    private final SubscriptionMapper subscriptionMapper;
-    private final KafkaTemplate<String, SubscriptionDeactivateEvent> kafkaTemplate;
+    private final KafkaTemplate<String, SubscriptionDeactivateEvent> kafkaDeactivateTemplate;
 
     @Override
     @Transactional
     public SubscriptionResponse create(CreateSubscriptionRequest request) {
         // Always create a new subscription record. Do NOT reactivate old records.
-        UserSubscription subscription = subscriptionMapper.toEntity(request);
+        Subscription subscription = new Subscription();
+        subscription.setUserId(request.getUserId());
+        subscription.setSubscriptionStartDate(request.getSubscriptionStartDate());
+        subscription.setSubscriptionEndDate(request.getSubscriptionEndDate());
+
         if (subscription.getSubscriptionStatus() == null) {
             subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
         }
@@ -57,14 +59,14 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         // processing flow
         subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
         subscription.setActive(true);
-        UserSubscription saved = subscriptionRepository.save(subscription);
-        return subscriptionMapper.toResponse(saved);
+        Subscription saved = subscriptionRepository.save(subscription);
+        return mapToResponse(saved);
     }
 
     @Override
     @Transactional
     public SubscriptionResponse update(UUID id, UpdateSubscriptionRequest request) {
-        UserSubscription subscription = subscriptionRepository.findById(id)
+        Subscription subscription = subscriptionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Subscription", "id", id.toString()));
 
         if (request.getSubscriptionStatus() != null)
@@ -73,8 +75,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             subscription.setSubscriptionStartDate(request.getSubscriptionStartDate());
         if (request.getSubscriptionEndDate() != null)
             subscription.setSubscriptionEndDate(request.getSubscriptionEndDate());
-        UserSubscription saved = subscriptionRepository.save(subscription);
-        return subscriptionMapper.toResponse(saved);
+        Subscription saved = subscriptionRepository.save(subscription);
+        return mapToResponse(saved);
     }
 
     /**
@@ -90,9 +92,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     // production use)
     @Scheduled(cron = "0 0/5 * * * ?") // Runs every 5 minutes (for testing purposes)
     public void deactivate() {
-        List<UserSubscription> subscriptions = subscriptionRepository
+        List<Subscription> subscriptions = subscriptionRepository
                 .findBySubscriptionStatus(SubscriptionStatus.CANCELLED);
-        for (UserSubscription cancelSubscription : subscriptions) {
+        for (Subscription cancelSubscription : subscriptions) {
             if (cancelSubscription.getSubscriptionEndDate().isBefore(LocalDate.now())) {
                 cancelSubscription.setDeactivatedAt(LocalDateTime.now());
                 // Invalidate the subscription
@@ -103,9 +105,9 @@ public class SubscriptionServiceImpl implements SubscriptionService {
             }
         }
 
-        List<UserSubscription> activeSubscriptions = subscriptionRepository
+        List<Subscription> activeSubscriptions = subscriptionRepository
                 .findBySubscriptionStatus(SubscriptionStatus.ACTIVE);
-        for (UserSubscription activeSubscription : activeSubscriptions) {
+        for (Subscription activeSubscription : activeSubscriptions) {
             if (activeSubscription.getSubscriptionEndDate().isBefore(LocalDate.now())) {
                 activeSubscription.setSubscriptionStatus(SubscriptionStatus.EXPIRED);
                 activeSubscription.setDeactivatedAt(LocalDateTime.now());
@@ -116,15 +118,15 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 // TODO: Add notification logic to inform users about expired subscriptions
 
                 // Publish subscription deactivation event to notify other services
-                kafkaTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
+                kafkaDeactivateTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
                         .payerId(activeSubscription.getUserId())
                         .build());
             }
         }
 
-        List<UserSubscription> expiredSubscriptions = subscriptionRepository
+        List<Subscription> expiredSubscriptions = subscriptionRepository
                 .findBySubscriptionStatus(SubscriptionStatus.EXPIRED);
-        for (UserSubscription expiredSubscription : expiredSubscriptions) {
+        for (Subscription expiredSubscription : expiredSubscriptions) {
             if (expiredSubscription.getDeactivatedAt() == null) {
                 expiredSubscription.setDeactivatedAt(LocalDateTime.now());
                 // Invalidate the subscription
@@ -133,7 +135,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 // TODO: Add notification logic to inform users about expired subscriptions
 
                 // Publish subscription deactivation event to notify other services
-                kafkaTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
+                kafkaDeactivateTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
                         .payerId(expiredSubscription.getUserId())
                         .build());
             }
@@ -143,7 +145,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Transactional
     public void userDeactivate(UUID id) {
-        UserSubscription subscription = subscriptionRepository.findByUserIdAndIsActiveTrue(id);
+        Subscription subscription = subscriptionRepository.findByUserIdAndIsActiveTrue(id);
 
         if (subscription == null) {
             throw new NotFoundException("Active subscription", "userId", id.toString());
@@ -163,8 +165,8 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     }
 
     @Override
-    public UserSubscription userReactivate(UUID userId, UUID subscriptionId) {
-        UserSubscription subscription = subscriptionRepository.findByUserIdAndSubscriptionId(userId, subscriptionId);
+    public Subscription userReactivate(UUID userId, UUID subscriptionId) {
+        Subscription subscription = subscriptionRepository.findByUserIdAndId(userId, subscriptionId);
 
         if (subscription == null) {
             throw new NotFoundException("Active subscription", "userId", userId.toString());
@@ -182,5 +184,17 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         subscriptionRepository.save(subscription);
 
         return subscription;
+    }
+
+    private SubscriptionResponse mapToResponse(Subscription s) {
+        if (s == null)
+            return null;
+        SubscriptionResponse resp = new SubscriptionResponse();
+        resp.setId(s.getId());
+        resp.setUserId(s.getUserId());
+        resp.setSubscriptionStatus(s.getSubscriptionStatus());
+        resp.setSubscriptionStartDate(s.getSubscriptionStartDate());
+        resp.setSubscriptionEndDate(s.getSubscriptionEndDate());
+        return resp;
     }
 }

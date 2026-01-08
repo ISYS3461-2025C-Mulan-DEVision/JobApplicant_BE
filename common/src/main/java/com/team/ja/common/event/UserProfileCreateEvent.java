@@ -5,24 +5,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import com.team.ja.common.enumeration.EmploymentType;
-
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Event published when a user updates their search profile.
- * 
- * This will link directly to JM applicant
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserSearchProfileUpdateEvent {
+public class UserProfileCreateEvent {
 
     @Builder.Default
     private UUID eventId = UUID.randomUUID();
@@ -33,6 +26,7 @@ public class UserSearchProfileUpdateEvent {
     @Schema(description = "Country abbreviation (2-letter) for the user")
     private String countryAbbreviation;
 
+    // Will be send as null initially, will be set when user updates their profile
     @Schema(description = "Highest education level of the user", example = "BACHELORS")
     private String educationLevel;
 

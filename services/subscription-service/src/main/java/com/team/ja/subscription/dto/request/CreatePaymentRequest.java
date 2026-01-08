@@ -49,13 +49,13 @@ public class CreatePaymentRequest {
      * The amount to be paid
      */
     @Schema(description = "The amount to be paid", example = "49.99", required = true)
-    private BigDecimal amount;
+    private BigDecimal amount = new BigDecimal("10.00");
 
     /**
      * The currency of the payment
      */
     @Schema(description = "The currency of the payment", example = "USD", required = true)
-    private String currency;
+    private String currency = "USD";
 
     /**
      * The description of the payment

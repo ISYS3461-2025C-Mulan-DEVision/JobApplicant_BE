@@ -59,7 +59,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Override
     public InvoiceResponse getInvoiceById(UUID invoiceId, UUID userId) {
         log.info("Fetching invoice by ID: {}", invoiceId);
-        Invoice invoice = invoiceRepository.findByUserIdandInvoiceId(userId, invoiceId);
+        Invoice invoice = invoiceRepository.findByUserIdAndId(userId, invoiceId);
         if (invoice != null) {
             return mapToResponse(invoice);
         } else {

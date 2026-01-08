@@ -10,8 +10,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 @Configuration
@@ -33,19 +31,6 @@ public class KafkaConsumerConfig {
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(configProps);
-    }
-
-    /**
-     * Reply container for handling replies from Kafka.
-     * 
-     * @param genericConsumerFactory
-     * @return
-     */
-    @Bean
-    public KafkaMessageListenerContainer<String, Object> replyContainer(
-            ConsumerFactory<String, Object> genericConsumerFactory) {
-        ContainerProperties containerProperties = new ContainerProperties("reply-topic");
-        return new KafkaMessageListenerContainer<>(genericConsumerFactory, containerProperties);
     }
 
 }

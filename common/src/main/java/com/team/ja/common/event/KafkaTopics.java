@@ -109,4 +109,24 @@ public final class KafkaTopics {
      * Consumer: notification-service
      */
     public static final String JOB_POSTED_MATCHED = "job-posted-matched";
+
+    /**
+     * Topic for UserProfileCreateEvent messages.
+     * Producer: user-service
+     * Consumer: jm-search-service
+     */
+    public static final String USER_PROFILE_CREATE = "user-profile-create";
+
+    /**
+     * Topic for UserProfileUpdateEvent messages.
+     * Producer: user-service
+     * Consumer: jm-search-service
+     */
+    public static final String USER_PROFILE_UPDATE = "user-profile-update";
+
+    public static final String JOB_POST_PUBLISHED = "jobpost.published";
+
+    public static final String JOB_POST_SKILL_CHANGE = "jobpost.skill.change";
+
+    public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.change";
 }

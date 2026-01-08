@@ -1,22 +1,37 @@
 package com.team.ja.user.service.impl;
 
+import com.team.ja.common.enumeration.EmploymentType;
+import com.team.ja.common.event.KafkaTopics;
+import com.team.ja.common.event.UserSearchProfileUpdateEvent;
 import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.dto.request.CreateUserEducationRequest;
 import com.team.ja.user.dto.request.UpdateUserEducationRequest;
 import com.team.ja.user.dto.response.UserEducationResponse;
 import com.team.ja.user.mapper.UserEducationMapper;
+import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
+import com.team.ja.user.model.UserSearchProfile;
+import com.team.ja.user.model.UserSkill;
+import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
+import com.team.ja.user.repository.UserSearchProfileEmploymentRepository;
+import com.team.ja.user.repository.UserSearchProfileJobTitleRepository;
+import com.team.ja.user.repository.UserSearchProfileRepository;
+import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.service.UserEducationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of UserEducationService.
@@ -31,6 +46,14 @@ public class UserEducationServiceImpl implements UserEducationService {
     private final UserRepository userRepository;
     private final UserEducationMapper userEducationMapper;
     private final ShardLookupService shardLookupService;
+    private final KafkaTemplate<String, UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate;
+
+    // For getting Kafka for JM
+    private final CountryRepository countryRepository;
+    private final UserSkillRepository userSkillRepository;
+    private final UserSearchProfileEmploymentRepository userSearchProfileEmploymentRepository;
+    private final UserSearchProfileJobTitleRepository userSearchProfileJobTitleRepository;
+    private final UserSearchProfileRepository userSearchProfileRepository;
 
     @Override
     @Transactional
@@ -58,7 +81,65 @@ public class UserEducationServiceImpl implements UserEducationService {
             UserEducation saved = userEducationRepository.save(education);
             log.info("Created education {} for user {}", saved.getId(), userId);
 
+            List<UserEducation> educationLevel = userEducationRepository
+                    .findByUserIdOrderByEducationLevelRankDesc(userId);
+
+            if (educationLevel.isEmpty()) {
+                log.warn("No education records found for user ID: {}", userId);
+            } else {
+                UserEducation top = educationLevel.get(0);
+                String highestEducationLevel = null;
+                if (top != null && top.getEducationLevel() != null) {
+                    highestEducationLevel = top.getEducationLevel().getDisplayName();
+                }
+                log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
+
+                Optional<User> user = userRepository.findFullUserById(userId);
+                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        .map(c -> c.getAbbreviation())
+                        .orElse(null);
+                List<UserSkill> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+                Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
+
+                List<EmploymentType> employmentTypes = userSearchProfileEmploymentRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(ute -> ute.getEmploymentType())
+                        .collect(Collectors.toList());
+
+                List<String> jobTitles = userSearchProfileJobTitleRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(utj -> utj.getJobTitle())
+                        .collect(Collectors.toList());
+
+                UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
+                        .userId(userId)
+                        .countryAbbreviation(countryAbbreviation)
+                        .educationLevel(educationLevel.isEmpty() ? null
+                                : educationLevel.get(0).getEducationLevel().name())
+                        .employmentTypes(employmentTypes.stream()
+                                .map(EmploymentType::name)
+                                .collect(Collectors.toList()))
+                        .minSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMin() : null)
+                        .maxSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMax() : null)
+                        .jobTitles(jobTitles)
+                        .skillIds(allUserSkillIds.stream()
+                                .map(UserSkill::getId)
+                                .collect(Collectors.toList()))
+                        .build();
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+            }
+
+            if (request.getEducationLevel() != null && !educationLevel.isEmpty()) {
+                UserEducation highestEducation = educationLevel.get(0);
+                log.info("Highest education level for user {} is {}", userId, highestEducation.getEducationLevel());
+            }
+
             return userEducationMapper.toResponse(saved);
+
         } finally {
             ShardContext.clear();
         }
@@ -101,6 +182,60 @@ public class UserEducationServiceImpl implements UserEducationService {
 
             UserEducation saved = userEducationRepository.save(education);
             log.info("Updated education {} for user {}", educationId, userId);
+
+            List<UserEducation> educationLevel = userEducationRepository
+                    .findByUserIdOrderByEducationLevelRankDesc(userId);
+
+            if (educationLevel.isEmpty()) {
+                log.warn("No education records found for user ID: {}", userId);
+            } else {
+                UserEducation top = educationLevel.get(0);
+                String highestEducationLevel = null;
+                if (top != null && top.getEducationLevel() != null) {
+                    highestEducationLevel = top.getEducationLevel().getDisplayName();
+                }
+                log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
+
+                Optional<User> user = userRepository.findFullUserById(userId);
+                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        .map(c -> c.getAbbreviation())
+                        .orElse(null);
+
+                Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
+
+                List<EmploymentType> employmentTypes = userSearchProfileEmploymentRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(ute -> ute.getEmploymentType())
+                        .collect(Collectors.toList());
+
+                List<UserSkill> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+
+                List<String> jobTitles = userSearchProfileJobTitleRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(utj -> utj.getJobTitle())
+                        .collect(Collectors.toList());
+
+                UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
+                        .userId(userId)
+                        .countryAbbreviation(countryAbbreviation)
+                        .educationLevel(educationLevel.isEmpty() ? null
+                                : educationLevel.get(0).getEducationLevel().name())
+                        .employmentTypes(employmentTypes.stream()
+                                .map(EmploymentType::name)
+                                .collect(Collectors.toList()))
+                        .minSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMin() : null)
+                        .maxSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMax() : null)
+                        .jobTitles(jobTitles)
+                        .skillIds(allUserSkillIds.stream()
+                                .map(UserSkill::getId)
+                                .collect(Collectors.toList()))
+                        .build();
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+            }
 
             return userEducationMapper.toResponse(saved);
         } finally {
@@ -158,6 +293,61 @@ public class UserEducationServiceImpl implements UserEducationService {
             userEducationRepository.save(education);
 
             log.info("Deleted education {} for user {}", educationId, userId);
+
+            List<UserEducation> educationLevel = userEducationRepository
+                    .findByUserIdOrderByEducationLevelRankDesc(userId);
+
+            if (educationLevel.isEmpty()) {
+                log.warn("No education records found for user ID: {}", userId);
+            } else {
+                UserEducation top = educationLevel.get(0);
+                String highestEducationLevel = null;
+                if (top != null && top.getEducationLevel() != null) {
+                    highestEducationLevel = top.getEducationLevel().getDisplayName();
+                }
+                log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
+
+                Optional<User> user = userRepository.findFullUserById(userId);
+                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        .map(c -> c.getAbbreviation())
+                        .orElse(null);
+
+                Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
+
+                List<EmploymentType> employmentTypes = userSearchProfileEmploymentRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(ute -> ute.getEmploymentType())
+                        .collect(Collectors.toList());
+
+                List<UserSkill> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+
+                List<String> jobTitles = userSearchProfileJobTitleRepository
+                        .findByUserSearchProfileIdAndIsActiveTrue(
+                                userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                        .stream()
+                        .map(utj -> utj.getJobTitle())
+                        .collect(Collectors.toList());
+
+                UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
+                        .userId(userId)
+                        .countryAbbreviation(countryAbbreviation)
+                        .educationLevel(educationLevel.isEmpty() ? null
+                                : educationLevel.get(0).getEducationLevel().name())
+                        .employmentTypes(employmentTypes.stream()
+                                .map(EmploymentType::name)
+                                .collect(Collectors.toList()))
+                        .minSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMin() : null)
+                        .maxSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMax() : null)
+                        .jobTitles(jobTitles)
+                        .skillIds(allUserSkillIds.stream()
+                                .map(UserSkill::getId)
+                                .collect(Collectors.toList()))
+                        .build();
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+            }
+
         } finally {
             ShardContext.clear();
         }

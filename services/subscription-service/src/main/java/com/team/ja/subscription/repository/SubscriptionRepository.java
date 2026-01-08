@@ -6,25 +6,25 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import com.team.ja.subscription.model.UserSubscription;
+import com.team.ja.subscription.model.Subscription;
 import com.team.ja.common.enumeration.SubscriptionStatus;
 
 @Repository
-public interface SubscriptionRepository extends JpaRepository<UserSubscription, UUID> {
+public interface SubscriptionRepository extends JpaRepository<Subscription, UUID> {
 
-    UserSubscription findByUserIdAndIsActiveTrue(UUID userId);
+    Subscription findByUserIdAndIsActiveTrue(UUID userId);
 
-    UserSubscription findByUserIdAndSubscriptionId(UUID userId, UUID subscriptionId);
+    Subscription findByUserIdAndId(UUID userId, UUID subscriptionId);
 
     /**
      * Find subscriptions by user ID.
      */
-    List<UserSubscription> findByUserId(UUID userId);
+    List<Subscription> findByUserId(UUID userId);
 
     /**
      * Find active subscriptions by user ID.
      */
-    List<UserSubscription> findByUserIdAndSubscriptionStatus(UUID userId, SubscriptionStatus subscriptionStatus);
+    List<Subscription> findByUserIdAndSubscriptionStatus(UUID userId, SubscriptionStatus subscriptionStatus);
 
     /**
      * Check if an active subscription exists for a user.
@@ -34,11 +34,11 @@ public interface SubscriptionRepository extends JpaRepository<UserSubscription, 
     /**
      * Find subscriptions that are expiring within a certain number of days.
      */
-    List<UserSubscription> findBySubscriptionEndDateBeforeAndSubscriptionStatus(java.time.LocalDate date,
+    List<Subscription> findBySubscriptionEndDateBeforeAndSubscriptionStatus(java.time.LocalDate date,
             SubscriptionStatus subscriptionStatus);
 
     /**
      * Find all subscriptions with a specific status.
      */
-    List<UserSubscription> findBySubscriptionStatus(SubscriptionStatus subscriptionStatus);
+    List<Subscription> findBySubscriptionStatus(SubscriptionStatus subscriptionStatus);
 }

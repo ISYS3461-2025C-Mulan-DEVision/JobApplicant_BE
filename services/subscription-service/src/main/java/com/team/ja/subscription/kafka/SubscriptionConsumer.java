@@ -3,20 +3,16 @@ package com.team.ja.subscription.kafka;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
-import org.springframework.boot.autoconfigure.security.SecurityProperties.User;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import com.team.ja.common.enumeration.PaymentStatus;
 import com.team.ja.common.enumeration.SubscriptionStatus;
 import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.common.event.PaymentCompletedEvent;
 import com.team.ja.common.event.SubscriptionActivateEvent;
-import com.team.ja.subscription.dto.response.PaymentResponse;
-import com.team.ja.subscription.model.UserSubscription;
+import com.team.ja.subscription.model.Subscription;
 import com.team.ja.subscription.repository.SubscriptionRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -42,13 +38,13 @@ public class SubscriptionConsumer {
         log.info("Received payment completed response for subscription processing: {}", event);
         // Fetch user subscriptions, this should have 1 active subscription and possibly
         // old inactive ones
-        List<UserSubscription> subscriptions = subscriptionRepository
+        List<Subscription> subscriptions = subscriptionRepository
                 .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
 
         // If no active subscription found, create one, this should not happen normally
         if (subscriptions.isEmpty()) {
             log.warn("No active subscriptions found for user ID: {}", event.getPayerId());
-            UserSubscription subscription = new UserSubscription();
+            Subscription subscription = new Subscription();
             // Set user ID
             subscription.setUserId(event.getPayerId());
             // Set subscription status (completed = active)
@@ -69,7 +65,7 @@ public class SubscriptionConsumer {
 
         // If active subscription(s) found, extend the end date by 1 month
         if (!subscriptions.isEmpty()) {
-            for (UserSubscription subscription : subscriptions) {
+            for (Subscription subscription : subscriptions) {
                 if (subscription.getSubscriptionEndDate() != null) {
                     LocalDate oldEndDate = subscription.getSubscriptionEndDate();
                     subscription.setSubscriptionEndDate(oldEndDate.plusMonths(1));
@@ -110,12 +106,12 @@ public class SubscriptionConsumer {
         log.info("Received payment failed response for subscription processing: {}", event);
         // Fetch user subscriptions, this should have 1 active subscription and possibly
         // old inactive ones
-        List<UserSubscription> subscriptions = subscriptionRepository
+        List<Subscription> subscriptions = subscriptionRepository
                 .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
 
         // If active subscription found, set to INACTIVE
         if (!subscriptions.isEmpty()) {
-            for (UserSubscription subscription : subscriptions) {
+            for (Subscription subscription : subscriptions) {
                 if (subscription.getSubscriptionEndDate() != LocalDate.now()
                         && subscription.getSubscriptionEndDate().isAfter(LocalDate.now())) {
                     // TODO: Implement grace period notification logic here
@@ -140,13 +136,13 @@ public class SubscriptionConsumer {
         log.info("Received payment cancelled response for subscription processing: {}", event);
         // Fetch user subscriptions, this should have 1 active subscription and possibly
         // old inactive ones
-        List<UserSubscription> subscriptions = subscriptionRepository
+        List<Subscription> subscriptions = subscriptionRepository
                 .findByUserIdAndSubscriptionStatus(event.getPayerId(), SubscriptionStatus.ACTIVE);
 
         // If active subscription found, check for subscription end date and notify user
         // This is a hard cancellation, so we set to INACTIVE
         if (!subscriptions.isEmpty()) {
-            for (UserSubscription subscription : subscriptions) {
+            for (Subscription subscription : subscriptions) {
                 if (subscription.getSubscriptionEndDate() != LocalDate.now()
                         && subscription.getSubscriptionEndDate().isAfter(LocalDate.now())) {
                     // TODO: Implement cancellation notification logic here
