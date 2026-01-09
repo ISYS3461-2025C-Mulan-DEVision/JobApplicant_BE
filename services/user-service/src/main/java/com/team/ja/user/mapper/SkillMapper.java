@@ -1,6 +1,7 @@
 package com.team.ja.user.mapper;
 
 import com.team.ja.user.dto.response.SkillResponse;
+import com.team.ja.user.dto.response.UserSearchProfileSkillResponse;
 import com.team.ja.user.model.Skill;
 import org.mapstruct.Mapper;
 
@@ -15,4 +16,6 @@ public interface SkillMapper {
     SkillResponse toResponse(Skill skill);
 
     List<SkillResponse> toResponseList(List<Skill> skills);
+
+    List<UserSearchProfileSkillResponse> toUserSearchProfileSkillResponseList(List<Skill> skills);
 }

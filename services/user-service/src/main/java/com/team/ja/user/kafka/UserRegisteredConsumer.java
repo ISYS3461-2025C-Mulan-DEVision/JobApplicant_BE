@@ -1,22 +1,24 @@
 package com.team.ja.user.kafka;
 
 import com.team.ja.common.event.KafkaTopics;
+import com.team.ja.common.event.UserProfileCreateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
 import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.config.sharding.ShardingProperties;
 import com.team.ja.user.model.Country;
 import com.team.ja.user.model.User;
+import com.team.ja.user.model.UserSearchProfile;
 import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.UserRepository;
-import com.team.ja.user.service.impl.ShardLookupService;
+import com.team.ja.user.repository.UserSearchProfileRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
 
-import org.checkerframework.checker.units.qual.s;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,8 @@ public class UserRegisteredConsumer {
 
         private final UserRepository userRepository;
         private final CountryRepository countryRepository;
+        private final UserSearchProfileRepository userSearchProfileRepository;
+        private final KafkaTemplate<String, UserProfileCreateEvent> kafkaTemplate;
 
         /**
          * Handle user registered event.
@@ -50,6 +54,20 @@ public class UserRegisteredConsumer {
 
                 try {
                         createProfileInShard(event);
+
+                        UserProfileCreateEvent profileCreateEvent = UserProfileCreateEvent.builder()
+                                        .userId(event.getUserId())
+                                        .countryAbbreviation(event.getCountryAbbreviation())
+                                        .educationLevel(null)
+                                        .skillIds(null)
+                                        .minSalary(null)
+                                        .maxSalary(null)
+                                        .employmentTypes(null)
+                                        .jobTitles(null)
+                                        .build();
+                        // Send that there is a new user profile created
+                        kafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent);
+
                         log.info("User profile created successfully for userId: {}", event.getUserId());
                 } catch (Exception e) {
                         log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage());
@@ -90,6 +108,11 @@ public class UserRegisteredConsumer {
                                 .build();
 
                 userRepository.save(user);
+
+                UserSearchProfile userSearchProfile = new UserSearchProfile();
+                userSearchProfile.setUserId(user.getId());
+                userSearchProfile.setCountryAbbreviation(event.getCountryAbbreviation());
+                userSearchProfileRepository.save(userSearchProfile);
                 log.info("User profile created in shard for userId: {}", event.getUserId());
         }
 
