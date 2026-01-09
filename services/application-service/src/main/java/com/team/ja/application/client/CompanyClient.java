@@ -12,9 +12,11 @@ import java.util.UUID;
 @FeignClient(name = "${services.jm-company.name:JM_COMPANY}")
 public interface CompanyClient {
 
+    // Returns wrapped in ApiResponse
     @GetMapping("/api/companies/{id}")
     ApiResponse<CompanyDto> getCompanyById(@PathVariable("id") UUID id);
 
+    // Returns wrapped in ApiResponse
     @GetMapping("/api/companies/{id}/profile")
     ApiResponse<CompanyProfileDto> getCompanyProfileById(@PathVariable("id") UUID id);
 }

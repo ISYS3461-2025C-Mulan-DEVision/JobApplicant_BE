@@ -17,22 +17,24 @@ import java.util.UUID;
 @FeignClient(name = "${services.jm-job-post.name:JM_JOB_POST}")
 public interface JobPostClient {
 
+    // Returns data directly (not wrapped in ApiResponse)
     @GetMapping("/api/job-posts/public")
-    ApiResponse<JobManagerPageResponse<JobPostDto>> getPublicJobPosts(
+    JobManagerPageResponse<JobPostDto> getPublicJobPosts(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size
     );
 
+    // Returns data directly (not wrapped in ApiResponse)
     @PostMapping("/api/external/job-posts/search")
-    ApiResponse<JobManagerPageResponse<JobSearchResultDto>> searchJobPosts(
+    JobManagerPageResponse<JobSearchResultDto> searchJobPosts(
             @RequestBody JobSearchRequest request
     );
     
-    // Internal API if needed
+    // Returns wrapped in ApiResponse
     @GetMapping("/api/job-posts/{id}")
     ApiResponse<JobPostDto> getJobPostById(@PathVariable("id") UUID id);
     
-    // External API for basic info might be useful
+    // Returns wrapped in ApiResponse
     @GetMapping("/api/external/job-posts/{id}")
     ApiResponse<JobPostDto> getJobPostBasicInfo(@PathVariable("id") UUID id);
 }

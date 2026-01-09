@@ -7,8 +7,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
+// c:\Users\dorem\Documents\GitHub\ArchSysGroup\JobApplicant_BE\common\src\main\java\com\team\ja\common\dto\jobmanager\JobPostDto.java
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,7 +28,10 @@ public class JobPostDto {
     private String countryCode;
     private LocalDateTime postedAt;
     private LocalDateTime expiryAt;
+    
+    // Employment type can be a single value or array depending on endpoint
     private String employmentType;
+    private List<String> employmentTypes;
     
     @JsonProperty("aprivate")
     private boolean aprivate;
