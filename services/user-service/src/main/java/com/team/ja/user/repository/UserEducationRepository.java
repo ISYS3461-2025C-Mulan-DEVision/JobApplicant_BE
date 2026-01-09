@@ -20,6 +20,8 @@ public interface UserEducationRepository extends JpaRepository<UserEducation, UU
      */
     List<UserEducation> findByUserIdAndIsActiveTrueOrderByStartAtDesc(UUID userId);
 
+    List<UserEducation> findByUserId(UUID userId);
+
     /**
      * Find all active education records for a user.
      *

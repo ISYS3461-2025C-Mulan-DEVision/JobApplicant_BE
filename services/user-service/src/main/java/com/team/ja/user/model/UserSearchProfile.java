@@ -62,6 +62,11 @@ public class UserSearchProfile extends BaseEntity {
     private String countryAbbreviation;
 
     /**
+     * Is Fresher flag for this search profile.
+     */
+    private Boolean isFresher;
+
+    /**
      * Skill associated with this search profile.
      */
     @OneToMany(mappedBy = "userSearchProfile", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)

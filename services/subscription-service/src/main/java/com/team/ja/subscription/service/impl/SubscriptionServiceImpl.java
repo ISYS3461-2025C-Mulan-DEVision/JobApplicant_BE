@@ -44,12 +44,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         // Always create a new subscription record. Do NOT reactivate old records.
         Subscription subscription = new Subscription();
         subscription.setUserId(request.getUserId());
-        subscription.setSubscriptionStartDate(request.getSubscriptionStartDate());
-        subscription.setSubscriptionEndDate(request.getSubscriptionEndDate());
-
-        if (subscription.getSubscriptionStatus() == null) {
-            subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
-        }
+        subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
 
         // Set created timestamps
         subscription.setCreatedAt(LocalDateTime.now());

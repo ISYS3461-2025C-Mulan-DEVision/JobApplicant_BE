@@ -1,6 +1,7 @@
 package com.team.ja.user.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -14,6 +15,9 @@ import lombok.NoArgsConstructor;
 @Builder
 @Schema(description = "User search profile skill information")
 public class UserSearchProfileSkillResponse {
+
+    @Schema(description = "Skill ID", example = "1")
+    private UUID skillId;
 
     @Schema(description = "Skill name", example = "Java")
     private String skillName;

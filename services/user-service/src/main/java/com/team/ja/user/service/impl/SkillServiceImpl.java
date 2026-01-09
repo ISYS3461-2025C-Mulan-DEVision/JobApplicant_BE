@@ -161,7 +161,7 @@ public class SkillServiceImpl implements SkillService {
                         .build();
                 profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
-                Optional<User> user = userRepository.findFullUserById(userId);
+                Optional<User> user = userRepository.findById(userId);
                 String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
                         .map(c -> c.getAbbreviation())
                         .orElse(null);
@@ -312,7 +312,7 @@ public class SkillServiceImpl implements SkillService {
                     .build();
             profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
-            Optional<User> user = userRepository.findFullUserById(userId);
+            Optional<User> user = userRepository.findById(userId);
             String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
                     .map(c -> c.getAbbreviation())
                     .orElse(null);

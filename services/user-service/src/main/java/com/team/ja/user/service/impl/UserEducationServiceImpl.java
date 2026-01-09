@@ -94,7 +94,7 @@ public class UserEducationServiceImpl implements UserEducationService {
                 }
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
-                Optional<User> user = userRepository.findFullUserById(userId);
+                Optional<User> user = userRepository.findById(userId);
                 String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
                         .map(c -> c.getAbbreviation())
                         .orElse(null);
@@ -196,7 +196,7 @@ public class UserEducationServiceImpl implements UserEducationService {
                 }
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
-                Optional<User> user = userRepository.findFullUserById(userId);
+                Optional<User> user = userRepository.findById(userId);
                 String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
                         .map(c -> c.getAbbreviation())
                         .orElse(null);
@@ -307,7 +307,7 @@ public class UserEducationServiceImpl implements UserEducationService {
                 }
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
-                Optional<User> user = userRepository.findFullUserById(userId);
+                Optional<User> user = userRepository.findById(userId);
                 String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
                         .map(c -> c.getAbbreviation())
                         .orElse(null);

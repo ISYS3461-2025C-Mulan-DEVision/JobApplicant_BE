@@ -33,6 +33,9 @@ public class UserProfileCreateEvent {
     @Schema(description = "List of skill IDs associated with the user")
     private List<UUID> skillIds;
 
+    @Schema(description = "Is Fresher flag for the user")
+    private Boolean isFresher;
+
     @Schema(description = "List of employment types preferred by the user")
     private List<String> employmentTypes;
 
