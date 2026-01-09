@@ -1,0 +1,1333 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Job Manager - JobPost API",
+    "description": "API documentation for JobPost service",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8183",
+      "description": "Generated server url"
+    }
+  ],
+  "paths": {
+    "/api/job-posts/{id}": {
+      "get": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "getJobPost",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "updateJobPost",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateJobPostRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "deleteJobPost",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseVoid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/{id}/skills": {
+      "put": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "updateJobPostSkills",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSkillsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts": {
+      "get": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "getAllJobPosts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "createJobPost",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJobPostRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/{id}/unpublish": {
+      "post": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "unpublishJobPost",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/{id}/publish": {
+      "post": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "publishJobPost",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/search": {
+      "post": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "searchJobPosts",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageJobSearchResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/public": {
+      "get": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "getPublishedJobPosts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/company/{companyId}": {
+      "get": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "getCompanyJobPosts",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-posts/company/{companyId}/published": {
+      "get": {
+        "tags": [
+          "job-post-controller"
+        ],
+        "operationId": "getPublishedCompanyJobPosts",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponsePageJobPostDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/{id}": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "getJobPostBasicInfo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostBasicInfoDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/{id}/status": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "getJobPostStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/{id}/is-published": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "isJobPostPublished",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/{id}/is-expired": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "isJobPostExpired",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/company/{companyId}": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "getPublishedJobPostsByCompany",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageJobPostSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/external/job-posts/company/{companyId}/count": {
+      "get": {
+        "tags": [
+          "job-post-external-controller"
+        ],
+        "operationId": "getPublishedJobPostCount",
+        "parameters": [
+          {
+            "name": "companyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int64"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UpdateJobPostRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "salaryType": {
+            "type": "string",
+            "enum": [
+              "RANGE",
+              "ABOUT",
+              "UP_TO",
+              "FROM",
+              "NEGOTIABLE"
+            ]
+          },
+          "salaryMin": {
+            "type": "number"
+          },
+          "salaryMax": {
+            "type": "number"
+          },
+          "salaryNote": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "locationCity": {
+            "maxLength": 128,
+            "minLength": 0,
+            "type": "string"
+          },
+          "fresher": {
+            "type": "boolean"
+          },
+          "expiryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aprivate": {
+            "type": "boolean"
+          },
+          "isPrivate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponseJobPostDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/JobPostDto"
+          }
+        }
+      },
+      "JobPostDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "salaryType": {
+            "type": "string",
+            "enum": [
+              "RANGE",
+              "ABOUT",
+              "UP_TO",
+              "FROM",
+              "NEGOTIABLE"
+            ]
+          },
+          "salaryMin": {
+            "type": "number"
+          },
+          "salaryMax": {
+            "type": "number"
+          },
+          "salaryNote": {
+            "type": "string"
+          },
+          "locationCity": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "employmentType": {
+            "type": "string",
+            "enum": [
+              "FULL_TIME",
+              "PART_TIME",
+              "CONTRACT",
+              "FREELANCE",
+              "INTERNSHIP"
+            ]
+          },
+          "aprivate": {
+            "type": "boolean"
+          },
+          "isFresher": {
+            "type": "boolean"
+          },
+          "isPublished": {
+            "type": "boolean"
+          },
+          "isPrivate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateSkillsRequest": {
+        "required": [
+          "skillIds"
+        ],
+        "type": "object",
+        "properties": {
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "CreateJobPostRequest": {
+        "required": [
+          "companyId",
+          "salaryType",
+          "title"
+        ],
+        "type": "object",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "salaryType": {
+            "type": "string",
+            "enum": [
+              "RANGE",
+              "ABOUT",
+              "UP_TO",
+              "FROM",
+              "NEGOTIABLE"
+            ]
+          },
+          "salaryMin": {
+            "type": "number"
+          },
+          "salaryMax": {
+            "type": "number"
+          },
+          "salaryNote": {
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "locationCity": {
+            "maxLength": 128,
+            "minLength": 0,
+            "type": "string"
+          },
+          "fresher": {
+            "type": "boolean"
+          },
+          "expiryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "employmentType": {
+            "type": "string",
+            "enum": [
+              "FULL_TIME",
+              "PART_TIME",
+              "CONTRACT",
+              "FREELANCE",
+              "INTERNSHIP"
+            ]
+          },
+          "aprivate": {
+            "type": "boolean"
+          },
+          "isPrivate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "JobSearchRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "employmentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "FULL_TIME",
+                "PART_TIME",
+                "CONTRACT",
+                "FREELANCE",
+                "INTERNSHIP"
+              ]
+            }
+          },
+          "locationCity": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "minSalary": {
+            "type": "number"
+          },
+          "maxSalary": {
+            "type": "number"
+          },
+          "fresher": {
+            "type": "boolean"
+          },
+          "page": {
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "JobSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "locationCity": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "salaryType": {
+            "type": "string",
+            "enum": [
+              "RANGE",
+              "ABOUT",
+              "UP_TO",
+              "FROM",
+              "NEGOTIABLE"
+            ]
+          },
+          "salaryMin": {
+            "type": "number"
+          },
+          "salaryMax": {
+            "type": "number"
+          },
+          "salaryNote": {
+            "type": "string"
+          },
+          "employmentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "FULL_TIME",
+                "PART_TIME",
+                "CONTRACT",
+                "FREELANCE",
+                "INTERNSHIP"
+              ]
+            }
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "fresher": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageJobSearchResultDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobSearchResultDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageableObject": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "paged": {
+            "type": "boolean"
+          },
+          "pageNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpaged": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SortObject": {
+        "type": "object",
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          },
+          "sorted": {
+            "type": "boolean"
+          },
+          "unsorted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ApiResponsePageJobPostDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageJobPostDto"
+          }
+        }
+      },
+      "PageJobPostDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobPostDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "JobPostBasicInfoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "locationCity": {
+            "type": "string"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiryAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "fresher": {
+            "type": "boolean"
+          }
+        }
+      },
+      "JobPostStatusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        }
+      },
+      "JobPostSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "locationCity": {
+            "type": "string"
+          },
+          "salary": {
+            "$ref": "#/components/schemas/SalaryInfoDto"
+          },
+          "postedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fresher": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PageJobPostSummaryDto": {
+        "type": "object",
+        "properties": {
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobPostSummaryDto"
+            }
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          },
+          "numberOfElements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/SortObject"
+          },
+          "pageable": {
+            "$ref": "#/components/schemas/PageableObject"
+          },
+          "empty": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SalaryInfoDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseVoid": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}

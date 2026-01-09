@@ -95,6 +95,16 @@ public interface ApplicationService {
      */
     Page<ApplicationResponse> getApplicationsByJobPost(UUID jobPostId, Pageable pageable);
 
+    /**
+     * Download application file (resume or cover letter) without user validation.
+     * Auth: Internal service-to-service call
+     *
+     * @param applicationId Application ID
+     * @param fileType File type (RESUME or COVER_LETTER)
+     * @return File content as byte array
+     */
+    byte[] downloadApplicationFileInternal(UUID applicationId, String fileType);
+
     // ==================== ADMIN ENDPOINTS ====================
 
     /**
