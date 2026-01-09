@@ -234,6 +234,46 @@ public class ApplicationServiceImpl implements ApplicationService {
         return applications.map(applicationMapper::toResponse);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] downloadApplicationFileInternal(UUID applicationId, String fileType) {
+        log.info("Internal request to download file: {} for application: {}", fileType, applicationId);
+
+        JobApplication application = applicationRepository.findById(applicationId)
+                .orElseThrow(() -> new RuntimeException("Application not found"));
+
+        // Convert string to DocType enum
+        DocType docType;
+        try {
+            docType = DocType.valueOf(fileType.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid document type: " + fileType);
+        }
+
+        String fileUrl = null;
+        switch (docType) {
+            case RESUME:
+                fileUrl = application.getResumeUrl();
+                break;
+            case COVER_LETTER:
+                fileUrl = application.getCoverLetterUrl();
+                break;
+        }
+
+        if (fileUrl == null || fileUrl.isEmpty()) {
+            throw new RuntimeException("File not found for type: " + fileType);
+        }
+
+        try {
+            byte[] fileContent = s3FileService.downloadFile(fileUrl);
+            log.info("File downloaded successfully for internal request: {} bytes", fileContent.length);
+            return fileContent;
+        } catch (Exception e) {
+            log.error("Error downloading file for internal request: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to download file: " + e.getMessage());
+        }
+    }
+
     // ==================== ADMIN ENDPOINTS ====================
 
     @Override
