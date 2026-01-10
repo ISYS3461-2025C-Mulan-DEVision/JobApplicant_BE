@@ -152,7 +152,16 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
                                                         .map(UserSkill::getId)
                                                         .collect(Collectors.toList()))
                                         .build();
-                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                                .whenComplete((result, ex) -> {
+                                    if (ex == null) {
+                                        log.info("Sent UserSearchProfileUpdateEvent [partition: {}, offset: {}]", 
+                                                result.getRecordMetadata().partition(),
+                                                result.getRecordMetadata().offset());
+                                    } else {
+                                        log.error("Failed to send UserSearchProfileUpdateEvent", ex);
+                                    }
+                                });
 
                         return getUserSearchProfileJobTitles(searchProfileId);
                 } finally
@@ -227,7 +236,16 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
                                                         .map(UserSkill::getId)
                                                         .collect(Collectors.toList()))
                                         .build();
-                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                                .whenComplete((result, ex) -> {
+                                    if (ex == null) {
+                                        log.info("Sent UserSearchProfileUpdateEvent for deletion [partition: {}, offset: {}]", 
+                                                result.getRecordMetadata().partition(),
+                                                result.getRecordMetadata().offset());
+                                    } else {
+                                        log.error("Failed to send UserSearchProfileUpdateEvent for deletion", ex);
+                                    }
+                                });
 
                         log.info("Successfully deleted job title '{}' for search profile: {}",
                                         titleToDelete.getJobTitle(),

@@ -67,13 +67,6 @@ public final class KafkaTopics {
     public static final String USER_MIGRATION = "user-migration";
 
     /**
-     * Topic for user search profile update events.
-     * Producer: user-service
-     * Consumer: subscription-service
-     */
-    public static final String USER_SEARCH_PROFILE_UPDATED = "user-search-profile-updated";
-
-    /**
      * Topic for payment success response.
      * Producer: jm-payment-service
      * Consumer: subscription-service

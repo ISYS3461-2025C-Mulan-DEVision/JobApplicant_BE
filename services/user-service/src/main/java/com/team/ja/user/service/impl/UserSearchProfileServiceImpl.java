@@ -110,9 +110,12 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                                         .orElse(null);
 
                         Optional<User> user = userRepository.findById(profile.getUserId());
-                        String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                                        .map(c -> c.getAbbreviation())
-                                        .orElse(null);
+                        String countryAbbreviation = null;
+                        if (user.isPresent() && user.get().getCountryId() != null) {
+                                countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                                                .map(c -> c.getAbbreviation())
+                                                .orElse(null);
+                        }
                         List<UserEducation> educationLevel = userEducationRepository
                                         .findByUserIdOrderByEducationLevelRankDesc(profile.getUserId());
 
@@ -153,7 +156,17 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                                         .isFresher(false)
                                         .build();
 
-                        userProfileCreateKafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent);
+                        userProfileCreateKafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent)
+                                .whenComplete((result, ex) -> {
+                                    if (ex == null) {
+                                        log.info("Sent UserProfileCreateEvent for user {} [partition: {}, offset: {}]", 
+                                                profile.getUserId(),
+                                                result.getRecordMetadata().partition(),
+                                                result.getRecordMetadata().offset());
+                                    } else {
+                                        log.error("Failed to send UserProfileCreateEvent for user {}", profile.getUserId(), ex);
+                                    }
+                                });
 
                         log.info("User search profile saved: {}", savedProfile);
 
@@ -325,7 +338,17 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                                                         .collect(Collectors.toList()))
                                         .isFresher(updatedProfile.getIsFresher())
                                         .build();
-                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                        userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                                .whenComplete((result, ex) -> {
+                                    if (ex == null) {
+                                        log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]", 
+                                                updatedProfile.getUserId(),
+                                                result.getRecordMetadata().partition(),
+                                                result.getRecordMetadata().offset());
+                                    } else {
+                                        log.error("Failed to send UserSearchProfileUpdateEvent for user {}", updatedProfile.getUserId(), ex);
+                                    }
+                                });
                         return getUserSearchProfileByUserId(userId);
 
                 } finally {

@@ -95,9 +95,12 @@ public class UserEducationServiceImpl implements UserEducationService {
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
                 Optional<User> user = userRepository.findById(userId);
-                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                        .map(c -> c.getAbbreviation())
-                        .orElse(null);
+                String countryAbbreviation = null;
+                if (user.isPresent() && user.get().getCountryId() != null) {
+                    countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                }
                 List<UserSkill> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
                 Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
 
@@ -130,7 +133,16 @@ public class UserEducationServiceImpl implements UserEducationService {
                                 .map(UserSkill::getId)
                                 .collect(Collectors.toList()))
                         .build();
-                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent UserSearchProfileUpdateEvent for education creation [partition: {}, offset: {}]", 
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send UserSearchProfileUpdateEvent for education creation", ex);
+                            }
+                        });
             }
 
             if (request.getEducationLevel() != null && !educationLevel.isEmpty()) {
@@ -197,9 +209,12 @@ public class UserEducationServiceImpl implements UserEducationService {
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
                 Optional<User> user = userRepository.findById(userId);
-                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                        .map(c -> c.getAbbreviation())
-                        .orElse(null);
+                String countryAbbreviation = null;
+                if (user.isPresent() && user.get().getCountryId() != null) {
+                    countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                }
 
                 Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
 
@@ -234,7 +249,16 @@ public class UserEducationServiceImpl implements UserEducationService {
                                 .map(UserSkill::getId)
                                 .collect(Collectors.toList()))
                         .build();
-                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent UserSearchProfileUpdateEvent for education update [partition: {}, offset: {}]", 
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send UserSearchProfileUpdateEvent for education update", ex);
+                            }
+                        });
             }
 
             return userEducationMapper.toResponse(saved);
@@ -308,9 +332,12 @@ public class UserEducationServiceImpl implements UserEducationService {
                 log.info("Highest education level for user {} is {}", userId, highestEducationLevel);
 
                 Optional<User> user = userRepository.findById(userId);
-                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                        .map(c -> c.getAbbreviation())
-                        .orElse(null);
+                String countryAbbreviation = null;
+                if (user.isPresent() && user.get().getCountryId() != null) {
+                    countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                }
 
                 Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
 
@@ -345,7 +372,16 @@ public class UserEducationServiceImpl implements UserEducationService {
                                 .map(UserSkill::getId)
                                 .collect(Collectors.toList()))
                         .build();
-                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent UserSearchProfileUpdateEvent for education deletion [partition: {}, offset: {}]", 
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send UserSearchProfileUpdateEvent for education deletion", ex);
+                            }
+                        });
             }
 
         } finally {

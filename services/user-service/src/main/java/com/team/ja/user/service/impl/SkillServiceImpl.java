@@ -162,9 +162,12 @@ public class SkillServiceImpl implements SkillService {
                 profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
                 Optional<User> user = userRepository.findById(userId);
-                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                        .map(c -> c.getAbbreviation())
-                        .orElse(null);
+                String countryAbbreviation = null;
+                if (user.isPresent() && user.get().getCountryId() != null) {
+                    countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                }
                 List<UserEducation> educationLevel = userEducationRepository
                         .findByUserIdOrderByEducationLevelRankDesc(userId);
 
@@ -183,6 +186,7 @@ public class SkillServiceImpl implements SkillService {
                         .stream()
                         .map(utj -> utj.getJobTitle())
                         .collect(Collectors.toList());
+                log.info("Preparing to send UserSearchProfileUpdateEvent for user {}", userId);
 
                 UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
                         .userId(userId)
@@ -197,7 +201,18 @@ public class SkillServiceImpl implements SkillService {
                         .jobTitles(jobTitles)
                         .skillIds(allUserSkillIds)
                         .build();
-                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
+                                        userId,
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send UserSearchProfileUpdateEvent for user {}", userId, ex);
+                            }
+                        });
 
                 userRepository.findById(userId).ifPresent(User::markProfileUpdated);
             }
@@ -314,9 +329,12 @@ public class SkillServiceImpl implements SkillService {
             profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
             Optional<User> user = userRepository.findById(userId);
-            String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                    .map(c -> c.getAbbreviation())
-                    .orElse(null);
+            String countryAbbreviation = null;
+            if (user.isPresent() && user.get().getCountryId() != null) {
+                countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        .map(c -> c.getAbbreviation())
+                        .orElse(null);
+            }
             List<UserEducation> educationLevel = userEducationRepository
                     .findByUserIdOrderByEducationLevelRankDesc(userId);
 
@@ -349,7 +367,18 @@ public class SkillServiceImpl implements SkillService {
                     .jobTitles(jobTitles)
                     .skillIds(allUserSkillIds)
                     .build();
-            userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+
+            userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
+                                    userId,
+                                    result.getRecordMetadata().partition(),
+                                    result.getRecordMetadata().offset());
+                        } else {
+                            log.error("Failed to send UserSearchProfileUpdateEvent for user {}", userId, ex);
+                        }
+                    });
 
             // Mark user profile as updated
             userRepository.findById(userId).ifPresent(User::markProfileUpdated);
