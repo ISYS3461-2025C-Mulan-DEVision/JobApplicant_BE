@@ -119,7 +119,14 @@ public final class KafkaTopics {
 
     public static final String JOB_POST_PUBLISHED = "jobpost.published";
 
-    public static final String JOB_POST_SKILL_CHANGE = "jobpost.skill.change";
+    public static final String JOB_POST_SKILL_CHANGE = "jobpost.skills.changed";
 
-    public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.change";
+    public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.changed";
+
+    /**
+     * Topic for job matched events.
+     * Producer: user-service (when job matches search profile)
+     * Consumer: notification-service (to send notifications)
+     */
+    public static final String JOB_MATCHED = "job-matched";
 }

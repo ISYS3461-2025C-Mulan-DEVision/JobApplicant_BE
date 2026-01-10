@@ -157,16 +157,17 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                                         .build();
 
                         userProfileCreateKafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent)
-                                .whenComplete((result, ex) -> {
-                                    if (ex == null) {
-                                        log.info("Sent UserProfileCreateEvent for user {} [partition: {}, offset: {}]", 
-                                                profile.getUserId(),
-                                                result.getRecordMetadata().partition(),
-                                                result.getRecordMetadata().offset());
-                                    } else {
-                                        log.error("Failed to send UserProfileCreateEvent for user {}", profile.getUserId(), ex);
-                                    }
-                                });
+                                        .whenComplete((result, ex) -> {
+                                                if (ex == null) {
+                                                        log.info("Sent UserProfileCreateEvent for user {} [partition: {}, offset: {}]",
+                                                                        profile.getUserId(),
+                                                                        result.getRecordMetadata().partition(),
+                                                                        result.getRecordMetadata().offset());
+                                                } else {
+                                                        log.error("Failed to send UserProfileCreateEvent for user {}",
+                                                                        profile.getUserId(), ex);
+                                                }
+                                        });
 
                         log.info("User search profile saved: {}", savedProfile);
 
@@ -339,16 +340,17 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                                         .isFresher(updatedProfile.getIsFresher())
                                         .build();
                         userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
-                                .whenComplete((result, ex) -> {
-                                    if (ex == null) {
-                                        log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]", 
-                                                updatedProfile.getUserId(),
-                                                result.getRecordMetadata().partition(),
-                                                result.getRecordMetadata().offset());
-                                    } else {
-                                        log.error("Failed to send UserSearchProfileUpdateEvent for user {}", updatedProfile.getUserId(), ex);
-                                    }
-                                });
+                                        .whenComplete((result, ex) -> {
+                                                if (ex == null) {
+                                                        log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
+                                                                        updatedProfile.getUserId(),
+                                                                        result.getRecordMetadata().partition(),
+                                                                        result.getRecordMetadata().offset());
+                                                } else {
+                                                        log.error("Failed to send UserSearchProfileUpdateEvent for user {}",
+                                                                        updatedProfile.getUserId(), ex);
+                                                }
+                                        });
                         return getUserSearchProfileByUserId(userId);
 
                 } finally {
@@ -380,6 +382,102 @@ public class UserSearchProfileServiceImpl implements UserSearchProfileService {
                 } finally {
                         ShardContext.clear();
                 }
+        }
+
+        @Override
+        public List<UserSearchProfileResponse> getAllActiveSearchProfiles() {
+                log.info("Fetching all active search profiles for API");
+                List<UserSearchProfile> activeProfiles = userSearchProfileRepository.findByIsActiveTrue();
+                return activeProfiles.stream()
+                                .map(this::convertToResponse)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<UserSearchProfileUpdateEvent> getAllActiveSearchProfilesAsEvents() {
+                log.info("Fetching all active search profiles as events for job matching");
+                List<UserSearchProfile> activeProfiles = userSearchProfileRepository.findByIsActiveTrue();
+                return activeProfiles.stream()
+                                .map(this::convertToEvent)
+                                .collect(Collectors.toList());
+        }
+
+        /**
+         * Helper method to convert UserSearchProfile entity to response DTO
+         */
+        private UserSearchProfileResponse convertToResponse(UserSearchProfile profile) {
+                List<UserSearchProfileSkillResponse> skills = userSearchProfileSkillRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(skill -> UserSearchProfileSkillResponse.builder()
+                                                .skillId(skill.getSkillId())
+                                                .build())
+                                .collect(Collectors.toList());
+
+                List<UserSearchProfileEmploymentResponse> employments = userSearchProfileEmploymentRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(emp -> UserSearchProfileEmploymentResponse.builder()
+                                                .employmentType(emp.getEmploymentType())
+                                                .build())
+                                .collect(Collectors.toList());
+
+                List<UserSearchProfileJobTitleResponse> jobTitles = userSearchProfileJobTitleRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(title -> UserSearchProfileJobTitleResponse.builder()
+                                                .jobTitle(title.getJobTitle())
+                                                .build())
+                                .collect(Collectors.toList());
+
+                return UserSearchProfileResponse.builder()
+                                .searchProfileId(profile.getId())
+                                .userId(profile.getUserId())
+                                .salaryMin(profile.getSalaryMin())
+                                .salaryMax(profile.getSalaryMax())
+                                .countryAbbreviation(profile.getCountryAbbreviation())
+                                .educationLevel(profile.getEducationLevel())
+                                .isFresher(profile.getIsFresher())
+                                .skills(skills)
+                                .employments(employments)
+                                .jobTitles(jobTitles)
+                                .build();
+        }
+
+        /**
+         * Helper method to convert UserSearchProfile entity to Kafka event
+         */
+        private UserSearchProfileUpdateEvent convertToEvent(UserSearchProfile profile) {
+                List<UUID> skillIds = userSearchProfileSkillRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(UserSearchProfileSkill::getSkillId)
+                                .collect(Collectors.toList());
+
+                List<String> employmentTypes = userSearchProfileEmploymentRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(emp -> emp.getEmploymentType().name())
+                                .collect(Collectors.toList());
+
+                List<String> jobTitles = userSearchProfileJobTitleRepository
+                                .findByUserSearchProfileIdAndIsActiveTrue(profile.getId())
+                                .stream()
+                                .map(UserSearchProfileJobTitle::getJobTitle)
+                                .collect(Collectors.toList());
+
+                return UserSearchProfileUpdateEvent.builder()
+                                .userId(profile.getUserId())
+                                .countryAbbreviation(profile.getCountryAbbreviation())
+                                .educationLevel(profile.getEducationLevel() != null ? profile.getEducationLevel().name()
+                                                : null)
+                                .skillIds(skillIds)
+                                .employmentTypes(employmentTypes)
+                                .minSalary(profile.getSalaryMin())
+                                .maxSalary(profile.getSalaryMax())
+                                .jobTitles(jobTitles)
+                                .isFresher(profile.getIsFresher())
+                                .build();
         }
 
 }
