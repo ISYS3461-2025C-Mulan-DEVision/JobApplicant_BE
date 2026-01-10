@@ -1,5 +1,6 @@
 package com.team.ja.auth.api;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
@@ -164,6 +165,19 @@ public class AuthController {
             return ApiResponse.success("Logged out successfully");
         }
         return ApiResponse.error("Invalid authorization header");
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+        summary = "Change password",
+        description = "Change user password. Requires current password verification. Internal endpoint for user-service."
+    )
+    public ApiResponse<String> changePassword(
+        @RequestParam String email,
+        @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(email, request);
+        return ApiResponse.success("Password changed successfully");
     }
 
     @GetMapping("/validate")

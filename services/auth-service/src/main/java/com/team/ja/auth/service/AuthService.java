@@ -1,5 +1,6 @@
 package com.team.ja.auth.service;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
@@ -47,4 +48,13 @@ public interface AuthService {
      * @param token The JWT token from the Authorization header.
      */
     void logout(String token);
+
+    /**
+     * Change user password.
+     * Requires current password verification.
+     * 
+     * @param email User's email (extracted from JWT token)
+     * @param request Change password request with current and new password
+     */
+    void changePassword(String email, ChangePasswordRequest request);
 }

@@ -3,6 +3,7 @@ package com.team.ja.user.api;
 import com.team.ja.common.dto.ApiResponse;
 import com.team.ja.common.dto.PageResponse;
 import com.team.ja.common.exception.ForbiddenException;
+import com.team.ja.user.dto.request.ChangePasswordRequest;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.UserProfileResponse;
@@ -140,6 +141,20 @@ public class UserController {
         authorize(id, authUserIdStr);
         UserResponse response = userService.uploadAvatar(id, file);
         return ApiResponse.success("Avatar uploaded successfully", response);
+    }
+
+    @PostMapping("/{id}/change-password")
+    @Operation(
+        summary = "Change password",
+        description = "Change user password. Requires current password verification."
+    )
+    public ApiResponse<String> changePassword(
+            @Parameter(description = "User ID") @PathVariable UUID id,
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        authorize(id, authUserId);
+        userService.changePassword(id, request);
+        return ApiResponse.success("Password changed successfully");
     }
 
     @DeleteMapping("/{id}")

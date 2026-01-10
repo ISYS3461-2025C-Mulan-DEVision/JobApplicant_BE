@@ -73,34 +73,71 @@ public class SkillServiceImpl implements SkillService {
     @Override
     public List<SkillResponse> getAllSkills() {
         log.info("Fetching all active skills");
-        List<Skill> skills = skillRepository.findByIsActiveTrueOrderByUsageCountDesc();
-        return skillMapper.toResponseList(skills);
+        
+        // Skills are reference data replicated across all shards
+        // Use default shard to query skills
+        ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
+        
+        try {
+            List<Skill> skills = skillRepository.findByIsActiveTrueOrderByUsageCountDesc();
+            return skillMapper.toResponseList(skills);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     public List<SkillResponse> getPopularSkills() {
         log.info("Fetching popular skills");
-        List<Skill> skills = skillRepository.findTop20ByIsActiveTrueOrderByUsageCountDesc();
-        return skillMapper.toResponseList(skills);
+        
+        // Skills are reference data replicated across all shards
+        // Use default shard to query skills
+        ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
+        
+        try {
+            List<Skill> skills = skillRepository.findTop20ByIsActiveTrueOrderByUsageCountDesc();
+            return skillMapper.toResponseList(skills);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     public List<SkillResponse> searchSkills(String query) {
         log.info("Searching skills with query: {}", query);
+        
         if (query == null || query.trim().isEmpty()) {
             return getPopularSkills();
         }
-        List<Skill> skills = skillRepository.searchByName(query.trim());
-        return skillMapper.toResponseList(skills);
+        
+        // Skills are reference data replicated across all shards
+        // Use default shard to query skills
+        ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
+        
+        try {
+            List<Skill> skills = skillRepository.searchByName(query.trim());
+            return skillMapper.toResponseList(skills);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override
     public SkillResponse getSkillById(UUID id) {
         log.info("Fetching skill by ID: {}", id);
-        Skill skill = skillRepository.findById(id)
-                .filter(Skill::isActive)
-                .orElseThrow(() -> new NotFoundException("Skill", "id", id.toString()));
-        return skillMapper.toResponse(skill);
+        
+        // Skills are reference data replicated across all shards
+        // Use default shard to query skills
+        ShardContext.setShardKey(ShardContext.DEFAULT_SHARD);
+        
+        try {
+            Skill skill = skillRepository.findById(id)
+                    .filter(Skill::isActive)
+                    .orElseThrow(() -> new NotFoundException("Skill", "id", id.toString()));
+            return skillMapper.toResponse(skill);
+        } finally {
+            ShardContext.clear();
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.team.ja.auth.service.impl;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
@@ -361,6 +362,62 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             log.warn("Could not blacklist token: {}", e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        log.info("Changing password for user: {}", email);
+
+        // Find credential
+        AuthCredential credential = authCredentialRepository
+            .findByEmail(email)
+            .orElseThrow(() ->
+                new NotFoundException("User not found with email: " + email)
+            );
+
+        // Check if account is active
+        if (!credential.isActive()) {
+            throw new UnauthorizedException(
+                "Account is not active. Please verify your email."
+            );
+        }
+
+        // Check if account is locked
+        if (!credential.isAccountNonLocked()) {
+            throw new UnauthorizedException(
+                "Account is locked. Please try again later."
+            );
+        }
+
+        // Check auth provider - OAuth users shouldn't change password
+        if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+            throw new BadRequestException(
+                "Password change is not available for " + credential.getAuthProvider() + " accounts."
+            );
+        }
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), credential.getPasswordHash())) {
+            log.warn("Password change failed: invalid current password for {}", email);
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+
+        // Check if new password is different from current password
+        if (passwordEncoder.matches(request.getNewPassword(), credential.getPasswordHash())) {
+            throw new BadRequestException(
+                "New password must be different from current password"
+            );
+        }
+
+        // Update password
+        credential.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        authCredentialRepository.save(credential);
+
+        log.info("Password changed successfully for user: {}", email);
+
+        // Optionally: Send email notification about password change
+        // emailService.sendPasswordChangeNotification(credential);
     }
 
     private AuthResponse generateAuthResponse(AuthCredential credential) {
