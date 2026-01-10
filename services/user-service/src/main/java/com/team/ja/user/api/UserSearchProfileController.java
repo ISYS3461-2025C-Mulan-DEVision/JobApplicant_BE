@@ -121,7 +121,8 @@ public class UserSearchProfileController {
                         @RequestBody CreateSearchProfileSkill request) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
-                                skillService.addSkillToUserSearchProfile(request.getSkillIds(), searchProfileId));
+                                skillService.addSkillToUserSearchProfile(request.getSkillIds(), searchProfileId,
+                                                userId));
         }
 
         @PostMapping("/{searchProfileId}/employments")
@@ -145,7 +146,8 @@ public class UserSearchProfileController {
                         @RequestBody CreateSearchProfileJobTitle request) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
-                                userSearchProfileJobTitleService.createUserSearchProfileJobTitle(request, userId));
+                                userSearchProfileJobTitleService.createUserSearchProfileJobTitle(request,
+                                                searchProfileId, userId));
         }
 
         @DeleteMapping("/{searchProfileId}/skills/{skillId}")

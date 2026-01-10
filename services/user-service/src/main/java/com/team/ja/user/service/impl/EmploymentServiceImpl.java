@@ -21,7 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class EmploymentServiceImpl implements EmploymentService {
 
     private final UserSearchProfileRepository userSearchProfileRepository;
@@ -29,56 +28,50 @@ public class EmploymentServiceImpl implements EmploymentService {
     private final ShardLookupService shardLookupService;
 
     @Override
+    @Transactional
     public List<UserSearchProfileEmploymentResponse> addEmployment(CreateSearchProfileEmployment event,
             UUID userSearchProfileId) {
 
-        log.info("Adding employment status for user: {}", userSearchProfileId);
+        log.info("Adding employment status for user: {} for request {}", userSearchProfileId, event);
 
         String shardKey = shardLookupService.findShardIdBySearchProfileId(userSearchProfileId);
         ShardContext.setShardKey(shardKey);
 
         try {
 
-            if (userSearchProfileRepository.findByUserId(userSearchProfileId).isEmpty()) {
-                log.error("UserSearchProfile not found for userId: {}", userSearchProfileId);
+            if (userSearchProfileRepository.findByIdAndIsActiveTrue(userSearchProfileId).isEmpty()) {
+                log.error("UserSearchProfile not found for searchProfileId: {}", userSearchProfileId);
                 throw new IllegalArgumentException("UserSearchProfile not found");
             }
 
-            if (event.getEmploymentType() == null || event.getEmploymentType() != EmploymentType.CONTRACT
-                    && event.getEmploymentType() != EmploymentType.FULL_TIME
-                    && event.getEmploymentType() != EmploymentType.PART_TIME
-                    && event.getEmploymentType() != EmploymentType.FREELANCE
-                    && event.getEmploymentType() != EmploymentType.INTERNSHIP) {
-                log.error("Invalid employment type provided for userId: {}", userSearchProfileId);
-                throw new IllegalArgumentException("Invalid employment type");
-            }
+            List<UserSearchProfileEmploymentStatus> allStatuses = userSearchProfileEmploymentRepository
+                    .findByUserSearchProfileId(userSearchProfileId);
 
-            List<UserSearchProfileEmploymentStatus> existingStatuses = userSearchProfileEmploymentRepository
-                    .findByUserSearchProfileIdAndIsActiveTrue(userSearchProfileId);
+            EmploymentType employmentType = event.getEmploymentType();
+            UserSearchProfileEmploymentStatus existingStatus = allStatuses.stream()
+                    .filter(status -> status.getEmploymentType() == employmentType)
+                    .findFirst()
+                    .orElse(null);
 
-            for (EmploymentType employmentType : EmploymentType.values()) {
-                UserSearchProfileEmploymentStatus existingStatus = existingStatuses.stream()
-                        .filter(status -> status.getEmploymentType() == employmentType)
-                        .findFirst()
-                        .orElse(null);
-
-                if (existingStatus == null) {
-                    // New employment type
-                    UserSearchProfileEmploymentStatus employmentStatus = new UserSearchProfileEmploymentStatus();
-                    employmentStatus.setUserSearchProfileId(userSearchProfileId);
-                    employmentStatus.setEmploymentType(employmentType);
-                    userSearchProfileEmploymentRepository.save(employmentStatus);
-
-                } else if (!existingStatus.isActive()) {
-
-                    // Reactivate existing employment type
+            if (existingStatus != null) {
+                if (!existingStatus.isActive()) {
+                    // Reactivate inactive employment type
                     existingStatus.setActive(true);
                     userSearchProfileEmploymentRepository.save(existingStatus);
+                    log.info("Reactivated employment type {} for user: {}", employmentType, userSearchProfileId);
                 } else {
                     // Already active, do nothing
                     log.info("Employment type {} already active for user: {}", employmentType, userSearchProfileId);
                 }
-
+            } else {
+                // New employment type - create it
+                UserSearchProfileEmploymentStatus employmentStatus = UserSearchProfileEmploymentStatus.builder()
+                        .id(UUID.randomUUID())
+                        .userSearchProfileId(userSearchProfileId)
+                        .employmentType(employmentType)
+                        .build();
+                userSearchProfileEmploymentRepository.save(employmentStatus);
+                log.info("Created new employment type {} for user: {}", employmentType, userSearchProfileId);
             }
 
             log.info("Employment status added successfully for user: {}", userSearchProfileId);
@@ -92,6 +85,7 @@ public class EmploymentServiceImpl implements EmploymentService {
     }
 
     @Override
+    @Transactional
     public void removeEmploymentFromUserSearchProfile(UUID userSearchProfileId, UUID employmentId) {
 
         log.info("Removing employment status {} for user: {}", employmentId, userSearchProfileId);
@@ -134,6 +128,7 @@ public class EmploymentServiceImpl implements EmploymentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<UserSearchProfileEmploymentResponse> getEmploymentStatusByUserId(UUID userSearchProfileId) {
         log.info("Fetching employment statuses for user: {}", userSearchProfileId);
 

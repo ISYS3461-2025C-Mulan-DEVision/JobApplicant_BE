@@ -213,14 +213,14 @@ public class SkillServiceImpl implements SkillService {
     @Override
     @Transactional
     public List<UserSearchProfileSkillResponse> addSkillToUserSearchProfile(List<UUID> skillIds,
-            UUID searchProfileId) {
-        log.info("Adding {} skills to user {}", skillIds.size(), searchProfileId);
+            UUID searchProfileId, UUID userId) {
+        log.info("Adding {} skills to user {}", skillIds.size(), userId);
 
-        String shardKey = shardLookupService.findShardIdBySearchProfileId(searchProfileId);
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
         ShardContext.setShardKey(shardKey);
 
         try {
-            validateSearchProfileExists(searchProfileId);
+            // validateSearchProfileExists(searchProfileId);
 
             List<Skill> skills = skillRepository.findByIdInAndIsActiveTrue(skillIds);
             if (skills.size() != skillIds.size()) {
@@ -242,6 +242,7 @@ public class SkillServiceImpl implements SkillService {
                     // This is a brand new skill for the user
                     skillsChanged = true;
                     UserSearchProfileSkill newUserSkill = UserSearchProfileSkill.builder()
+                            .userSearchProfileId(searchProfileId)
                             .skillId(skillToAdd.getId()).build();
                     userSearchProfileSkillRepository.save(newUserSkill);
                     skillToAdd.setUsageCount(skillToAdd.getUsageCount() + 1);
@@ -484,9 +485,10 @@ public class SkillServiceImpl implements SkillService {
         }
     }
 
-    private void validateSearchProfileExists(UUID searchProfileId) {
-        if (!userSearchProfileSkillRepository.existsByUserSearchProfileId(searchProfileId)) {
-            throw new NotFoundException("User Search Profile", "id", searchProfileId.toString());
-        }
-    }
+    // private void validateSearchProfileExists(UUID searchProfileId) {
+    // if (!userSearchProfileRepository.existsById(searchProfileId)) {
+    // throw new NotFoundException("User Search Profile", "id",
+    // searchProfileId.toString());
+    // }
+    // }
 }

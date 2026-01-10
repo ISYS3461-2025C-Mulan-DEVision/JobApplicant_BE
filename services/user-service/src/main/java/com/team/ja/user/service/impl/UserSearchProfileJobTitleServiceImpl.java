@@ -54,17 +54,18 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
         @Transactional
         public List<UserSearchProfileJobTitleResponse> createUserSearchProfileJobTitle(
                         CreateSearchProfileJobTitle request,
-                        UUID searchProfileId) {
+                        UUID searchProfileId,
+                        UUID userId) {
 
                 log.info("Creating {} user search profile job titles for search profile: {}",
                                 request.getJobTitles().size(),
                                 searchProfileId);
 
-                String shardKey = shardLookupService.findShardIdBySearchProfileId(searchProfileId);
+                String shardKey = shardLookupService.findShardIdByUserId(userId);
                 ShardContext.setShardKey(shardKey);
 
                 try {
-                        if (userSearchProfileRepository.findById(searchProfileId) == null) {
+                        if (!userSearchProfileRepository.findById(searchProfileId).isPresent()) {
                                 log.warn("User search profile does not exist for search profile: {}", searchProfileId);
                                 throw new IllegalStateException(
                                                 "User search profile does not exist. Create a profile before adding job titles.");
@@ -75,17 +76,17 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
 
                         // Process each job title
                         for (String jobTitle : request.getJobTitles()) {
-                                String trimmedJobTitle = jobTitle.trim();
 
                                 UserSearchProfileJobTitle existingTitle = existingJobTitles.stream()
-                                                .filter(title -> title.getJobTitle().equalsIgnoreCase(trimmedJobTitle))
+                                                .filter(title -> title.getJobTitle().equalsIgnoreCase(jobTitle.trim()))
                                                 .findFirst()
                                                 .orElse(null);
 
                                 if (existingTitle == null) {
                                         UserSearchProfileJobTitle newJobTitle = UserSearchProfileJobTitle.builder()
+                                                        .id(UUID.randomUUID())
                                                         .userSearchProfileId(searchProfileId)
-                                                        .jobTitle(trimmedJobTitle)
+                                                        .jobTitle(jobTitle.trim())
                                                         .isActive(true)
                                                         .build();
 
@@ -96,7 +97,7 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
                                         userSearchProfileJobTitleRepository.save(existingTitle);
                                 } else {
                                         log.info("Job title '{}' already exists and is active for search profile: {}",
-                                                        trimmedJobTitle,
+                                                        jobTitle.trim(),
                                                         searchProfileId);
                                 }
                         }
@@ -104,28 +105,38 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
                         UserSearchProfile userSearchProfile = userSearchProfileRepository.findById(searchProfileId)
                                         .orElse(null);
 
+                        if (userSearchProfile == null) {
+                                log.error("User search profile not found for search profile ID: {}", searchProfileId);
+                                throw new IllegalStateException(
+                                                "User search profile not found. Cannot add job titles.");
+                        }
+
                         Optional<User> user = userRepository.findById(userSearchProfile.getUserId());
-                        String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        log.info("User found for user ID: {}", userSearchProfile.getUserId());
+                        String countryAbbreviation = user.isPresent() && user.get().getCountryId() != null 
+                                        ? countryRepository.findById(user.get().getCountryId())
                                         .map(c -> c.getAbbreviation())
-                                        .orElse(null);
+                                        .orElse(null)
+                                        : null;
+                        log.info("Country Abbreviation found: {}", countryAbbreviation);
                         List<UserEducation> educationLevel = userEducationRepository
                                         .findByUserIdOrderByEducationLevelRankDesc(userSearchProfile.getUserId());
-
+                        log.info("Education levels found: {}", educationLevel.size());
                         List<EmploymentType> employmentTypes = userSearchProfileEmploymentRepository
                                         .findByUserSearchProfileIdAndIsActiveTrue(searchProfileId)
                                         .stream()
                                         .map(ute -> ute.getEmploymentType())
                                         .collect(Collectors.toList());
-
+                        log.info("Employment types found: {}", employmentTypes.size());
                         List<String> jobTitles = userSearchProfileJobTitleRepository
                                         .findByUserSearchProfileIdAndIsActiveTrue(searchProfileId)
                                         .stream()
                                         .map(utj -> utj.getJobTitle())
                                         .collect(Collectors.toList());
-
+                        log.info("Job titles found: {}", jobTitles.size());
                         List<UserSkill> allUserSkillIds = userSkillRepository
                                         .findByUserIdAndIsActiveTrue(userSearchProfile.getUserId());
-
+                        log.info("User skills found: {}", allUserSkillIds.size());
                         UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
                                         .userId(userSearchProfile.getUserId())
                                         .countryAbbreviation(countryAbbreviation)
@@ -178,9 +189,11 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
                                         .orElse(null);
 
                         Optional<User> user = userRepository.findById(userSearchProfile.getUserId());
-                        String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        String countryAbbreviation = user.isPresent() && user.get().getCountryId() != null
+                                        ? countryRepository.findById(user.get().getCountryId())
                                         .map(c -> c.getAbbreviation())
-                                        .orElse(null);
+                                        .orElse(null)
+                                        : null;
                         List<UserEducation> educationLevel = userEducationRepository
                                         .findByUserIdOrderByEducationLevelRankDesc(userSearchProfile.getUserId());
 
@@ -225,6 +238,7 @@ public class UserSearchProfileJobTitleServiceImpl implements UserSearchProfileJo
         }
 
         @Override
+        @Transactional
         public List<UserSearchProfileJobTitleResponse> getUserSearchProfileJobTitles(UUID searchProfileId) {
                 log.info("Fetching job titles for search profile: {}", searchProfileId);
 

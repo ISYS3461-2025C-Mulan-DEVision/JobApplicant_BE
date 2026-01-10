@@ -77,7 +77,8 @@ public interface SkillService {
      */
     SkillResponse createSkill(String name);
 
-    List<UserSearchProfileSkillResponse> addSkillToUserSearchProfile(List<UUID> skillIds, UUID searchProfileId);
+    List<UserSearchProfileSkillResponse> addSkillToUserSearchProfile(List<UUID> skillIds, UUID searchProfileId,
+            UUID userId);
 
     void removeSkillFromUserSearchProfile(UUID skillId, UUID searchProfileId);
 
