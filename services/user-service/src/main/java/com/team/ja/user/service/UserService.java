@@ -1,6 +1,7 @@
 package com.team.ja.user.service;
 
 import com.team.ja.common.dto.PageResponse;
+import com.team.ja.user.dto.request.ChangePasswordRequest;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.UserProfileResponse;
@@ -159,4 +160,13 @@ public interface UserService {
      * @return true if exists
      */
     boolean existsByEmail(String email);
+
+    /**
+     * Change user password.
+     * Calls auth-service to update the password.
+     *
+     * @param userId  User ID (from JWT token in production)
+     * @param request Change password request with current and new password
+     */
+    void changePassword(UUID userId, ChangePasswordRequest request);
 }

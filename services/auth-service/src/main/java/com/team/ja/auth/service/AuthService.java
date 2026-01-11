@@ -1,8 +1,11 @@
 package com.team.ja.auth.service;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
+import com.team.ja.auth.dto.request.ForgotPasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
+import com.team.ja.auth.dto.request.ResetPasswordRequest;
 import com.team.ja.auth.dto.response.AuthResponse;
 
 /**
@@ -47,4 +50,28 @@ public interface AuthService {
      * @param token The JWT token from the Authorization header.
      */
     void logout(String token);
+
+    /**
+     * Change user password.
+     * Requires current password verification.
+     * 
+     * @param email User's email (extracted from JWT token)
+     * @param request Change password request with current and new password
+     */
+    void changePassword(String email, ChangePasswordRequest request);
+
+    /**
+     * Initiate forgot password flow.
+     * Sends password reset email if email exists.
+     * 
+     * @param request Forgot password request with email
+     */
+    void forgotPassword(ForgotPasswordRequest request);
+
+    /**
+     * Reset password using token from email.
+     * 
+     * @param request Reset password request with token and new password
+     */
+    void resetPassword(ResetPasswordRequest request);
 }
