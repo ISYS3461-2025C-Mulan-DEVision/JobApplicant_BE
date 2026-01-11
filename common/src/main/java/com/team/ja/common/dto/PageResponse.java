@@ -1,5 +1,6 @@
 package com.team.ja.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -27,9 +28,11 @@ public class PageResponse<T> {
     private List<T> content;
 
     @Schema(description = "Current page number (0-based)", example = "0")
+    @JsonAlias("page") // Allow deserializing from "page" field (Job Manager format)
     private int pageNumber;
 
     @Schema(description = "Number of items per page", example = "20")
+    @JsonAlias("size") // Allow deserializing from "size" field (Job Manager format)
     private int pageSize;
 
     @Schema(description = "Total number of items across all pages", example = "100")
