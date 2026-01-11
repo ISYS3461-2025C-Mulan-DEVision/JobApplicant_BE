@@ -1,7 +1,7 @@
 package com.team.ja.admin.api;
 
 import com.team.ja.admin.client.ApplicationClient;
-import com.team.ja.admin.client.JobManagerClient;
+import com.team.ja.admin.client.JobCompanyAdminClient;
 import com.team.ja.admin.client.JobPostAdminClient;
 import com.team.ja.admin.client.UserClient;
 import com.team.ja.common.dto.ApiResponse;
@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -31,7 +32,7 @@ import java.util.concurrent.ExecutionException;
 public class AdminSearchController {
 
     private final UserClient userClient;
-    private final JobManagerClient jobManagerClient;
+    private final JobCompanyAdminClient jobCompanyAdminClient;
     private final JobPostAdminClient jobPostAdminClient;
     // private final ApplicationClient applicationClient; // Applications usually
     // searched by filters, not global text
@@ -58,7 +59,34 @@ public class AdminSearchController {
 
         CompletableFuture<PageResponse<Object>> companiesFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                return jobManagerClient.searchCompanies(query, 0, 5).getData();
+                // Call Job Company Admin Client to get companies (API doesn't support name filter)
+                // Get all companies and filter by name client-side
+                ApiResponse<PageResponse<Object>> response = jobCompanyAdminClient.getCompanies(0, 100, "name", "ASC");
+                
+                if (response.isSuccess() && response.getData() != null) {
+                    // Filter companies by name client-side since API doesn't support it
+                    List<Object> filteredCompanies = response.getData().getContent().stream()
+                        .filter(company -> {
+                            if (company instanceof java.util.Map) {
+                                Object name = ((java.util.Map<?, ?>) company).get("name");
+                                return name != null && name.toString().toLowerCase().contains(query.toLowerCase());
+                            }
+                            return false;
+                        })
+                        .limit(5)
+                        .toList();
+                    
+                    return PageResponse.<Object>builder()
+                        .content(filteredCompanies)
+                        .pageNumber(0)
+                        .pageSize(5)
+                        .totalElements(filteredCompanies.size())
+                        .totalPages(1)
+                        .first(true)
+                        .last(true)
+                        .build();
+                }
+                return PageResponse.<Object>builder().content(java.util.Collections.emptyList()).build();
             } catch (Exception e) {
                 log.error("Error searching companies", e);
                 return PageResponse.<Object>builder().content(java.util.Collections.emptyList()).build();

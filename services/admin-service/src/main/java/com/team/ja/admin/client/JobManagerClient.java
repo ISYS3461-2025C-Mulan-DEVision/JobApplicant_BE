@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
-
+//DEPRECATED: use AdminCompanyController and AdminJobPostController.
 /**
  * Feign client for Job Manager Service.
  * Assumes standard REST endpoints for Companies and Job Posts.
