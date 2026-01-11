@@ -1,8 +1,8 @@
 package com.team.ja.subscription.config;
 
+import com.team.ja.common.event.PaymentCompletedEvent;
 import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.common.event.SubscriptionDeactivateEvent;
-import com.team.ja.common.event.UserRegisteredEvent;
 import com.team.ja.common.event.UserSearchProfileUpdateEvent;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -16,6 +16,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -40,21 +41,37 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
+    /**
+     * Consumer factory for PaymentCompletedEvent messages.
+     * Uses ErrorHandlingDeserializer to properly handle deserialization errors
+     * and prevent infinite retry loops.
+     */
     @Bean
-    public ConsumerFactory<String, UserRegisteredEvent> consumerFactory() {
+    public ConsumerFactory<String, PaymentCompletedEvent> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+
+        // Use ErrorHandlingDeserializer as wrapper to handle deserialization errors
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+
+        // Configure the actual deserializers
+        configProps.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        configProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+
+        // Set default value type for messages without type headers
+        configProps.put(JsonDeserializer.VALUE_DEFAULT_TYPE, PaymentCompletedEvent.class.getName());
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
+
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, PaymentCompletedEvent> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, PaymentCompletedEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         // Add error handler with backoff: 2 seconds interval, max 3 retries
         factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(2000L, 3)));
