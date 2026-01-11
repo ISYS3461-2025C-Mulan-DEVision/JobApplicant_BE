@@ -560,6 +560,9 @@ services:
       AWS_S3_ACCESS_KEY: ${AWS_S3_ACCESS_KEY}
       AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY}
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
+      # JM Service Feign Client Configuration
+      SERVICES_JM_JOB_POST_NAME: ${SERVICES_JM_JOB_POST_NAME}
+      SERVICES_JM_COMPANY_NAME: ${SERVICES_JM_COMPANY_NAME}
     depends_on:
       application-db:
         condition: service_healthy
@@ -643,6 +646,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${ADMIN_SERVICE_SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${ADMIN_SERVICE_SPRING_DATASOURCE_PASSWORD}
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE}
+      # JM Service Feign Client Configuration
+      SERVICES_JM_JOB_POST_NAME: ${SERVICES_JM_JOB_POST_NAME}
+      SERVICES_JM_COMPANY_NAME: ${SERVICES_JM_COMPANY_NAME}
     depends_on:
       admin-db:
         condition: service_healthy
