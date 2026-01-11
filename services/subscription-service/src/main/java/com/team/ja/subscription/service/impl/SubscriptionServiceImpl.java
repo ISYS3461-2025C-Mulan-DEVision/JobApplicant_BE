@@ -12,6 +12,7 @@ import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.common.event.SubscriptionDeactivateEvent;
 import com.team.ja.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -30,6 +31,7 @@ import java.util.UUID;
  * Deactivation is performed automatically for expired or cancelled
  * subscriptions.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @EnableScheduling
@@ -44,12 +46,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
         // Always create a new subscription record. Do NOT reactivate old records.
         Subscription subscription = new Subscription();
         subscription.setUserId(request.getUserId());
-        subscription.setSubscriptionStartDate(request.getSubscriptionStartDate());
-        subscription.setSubscriptionEndDate(request.getSubscriptionEndDate());
-
-        if (subscription.getSubscriptionStatus() == null) {
-            subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
-        }
+        subscription.setSubscriptionStatus(SubscriptionStatus.PENDING);
 
         // Set created timestamps
         subscription.setCreatedAt(LocalDateTime.now());
@@ -120,7 +117,16 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 // Publish subscription deactivation event to notify other services
                 kafkaDeactivateTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
                         .payerId(activeSubscription.getUserId())
-                        .build());
+                        .build())
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent SubscriptionDeactivateEvent [partition: {}, offset: {}]",
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send SubscriptionDeactivateEvent", ex);
+                            }
+                        });
             }
         }
 
@@ -137,7 +143,17 @@ public class SubscriptionServiceImpl implements SubscriptionService {
                 // Publish subscription deactivation event to notify other services
                 kafkaDeactivateTemplate.send(KafkaTopics.SUBSCRIPTION_DEACTIVATE, SubscriptionDeactivateEvent.builder()
                         .payerId(expiredSubscription.getUserId())
-                        .build());
+                        .build())
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info(
+                                        "Sent SubscriptionDeactivateEvent for expired subscription [partition: {}, offset: {}]",
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send SubscriptionDeactivateEvent for expired subscription", ex);
+                            }
+                        });
             }
         }
     }

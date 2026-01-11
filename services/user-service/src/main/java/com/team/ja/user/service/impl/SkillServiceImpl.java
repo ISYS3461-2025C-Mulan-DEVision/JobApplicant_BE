@@ -161,10 +161,13 @@ public class SkillServiceImpl implements SkillService {
                         .build();
                 profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
-                Optional<User> user = userRepository.findFullUserById(userId);
-                String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                        .map(c -> c.getAbbreviation())
-                        .orElse(null);
+                Optional<User> user = userRepository.findById(userId);
+                String countryAbbreviation = null;
+                if (user.isPresent() && user.get().getCountryId() != null) {
+                    countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                }
                 List<UserEducation> educationLevel = userEducationRepository
                         .findByUserIdOrderByEducationLevelRankDesc(userId);
 
@@ -183,6 +186,7 @@ public class SkillServiceImpl implements SkillService {
                         .stream()
                         .map(utj -> utj.getJobTitle())
                         .collect(Collectors.toList());
+                log.info("Preparing to send UserSearchProfileUpdateEvent for user {}", userId);
 
                 UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
                         .userId(userId)
@@ -197,7 +201,18 @@ public class SkillServiceImpl implements SkillService {
                         .jobTitles(jobTitles)
                         .skillIds(allUserSkillIds)
                         .build();
-                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+
+                userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                        .whenComplete((result, ex) -> {
+                            if (ex == null) {
+                                log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
+                                        userId,
+                                        result.getRecordMetadata().partition(),
+                                        result.getRecordMetadata().offset());
+                            } else {
+                                log.error("Failed to send UserSearchProfileUpdateEvent for user {}", userId, ex);
+                            }
+                        });
 
                 userRepository.findById(userId).ifPresent(User::markProfileUpdated);
             }
@@ -213,14 +228,14 @@ public class SkillServiceImpl implements SkillService {
     @Override
     @Transactional
     public List<UserSearchProfileSkillResponse> addSkillToUserSearchProfile(List<UUID> skillIds,
-            UUID searchProfileId) {
-        log.info("Adding {} skills to user {}", skillIds.size(), searchProfileId);
+            UUID searchProfileId, UUID userId) {
+        log.info("Adding {} skills to user {}", skillIds.size(), userId);
 
-        String shardKey = shardLookupService.findShardIdBySearchProfileId(searchProfileId);
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
         ShardContext.setShardKey(shardKey);
 
         try {
-            validateSearchProfileExists(searchProfileId);
+            // validateSearchProfileExists(searchProfileId);
 
             List<Skill> skills = skillRepository.findByIdInAndIsActiveTrue(skillIds);
             if (skills.size() != skillIds.size()) {
@@ -242,6 +257,7 @@ public class SkillServiceImpl implements SkillService {
                     // This is a brand new skill for the user
                     skillsChanged = true;
                     UserSearchProfileSkill newUserSkill = UserSearchProfileSkill.builder()
+                            .userSearchProfileId(searchProfileId)
                             .skillId(skillToAdd.getId()).build();
                     userSearchProfileSkillRepository.save(newUserSkill);
                     skillToAdd.setUsageCount(skillToAdd.getUsageCount() + 1);
@@ -312,10 +328,13 @@ public class SkillServiceImpl implements SkillService {
                     .build();
             profileUpdatedProducer.sendProfileUpdatedEvent(event);
 
-            Optional<User> user = userRepository.findFullUserById(userId);
-            String countryAbbreviation = countryRepository.findById(user.get().getCountryId())
-                    .map(c -> c.getAbbreviation())
-                    .orElse(null);
+            Optional<User> user = userRepository.findById(userId);
+            String countryAbbreviation = null;
+            if (user.isPresent() && user.get().getCountryId() != null) {
+                countryAbbreviation = countryRepository.findById(user.get().getCountryId())
+                        .map(c -> c.getAbbreviation())
+                        .orElse(null);
+            }
             List<UserEducation> educationLevel = userEducationRepository
                     .findByUserIdOrderByEducationLevelRankDesc(userId);
 
@@ -348,7 +367,18 @@ public class SkillServiceImpl implements SkillService {
                     .jobTitles(jobTitles)
                     .skillIds(allUserSkillIds)
                     .build();
-            userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+
+            userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                    .whenComplete((result, ex) -> {
+                        if (ex == null) {
+                            log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
+                                    userId,
+                                    result.getRecordMetadata().partition(),
+                                    result.getRecordMetadata().offset());
+                        } else {
+                            log.error("Failed to send UserSearchProfileUpdateEvent for user {}", userId, ex);
+                        }
+                    });
 
             // Mark user profile as updated
             userRepository.findById(userId).ifPresent(User::markProfileUpdated);
@@ -484,9 +514,10 @@ public class SkillServiceImpl implements SkillService {
         }
     }
 
-    private void validateSearchProfileExists(UUID searchProfileId) {
-        if (!userSearchProfileSkillRepository.existsByUserSearchProfileId(searchProfileId)) {
-            throw new NotFoundException("User Search Profile", "id", searchProfileId.toString());
-        }
-    }
+    // private void validateSearchProfileExists(UUID searchProfileId) {
+    // if (!userSearchProfileRepository.existsById(searchProfileId)) {
+    // throw new NotFoundException("User Search Profile", "id",
+    // searchProfileId.toString());
+    // }
+    // }
 }

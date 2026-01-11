@@ -52,7 +52,7 @@ public class UserSearchProfileController {
         @GetMapping
         @Operation(summary = "Get user search profile", description = "Get the search profile for a specific user")
         public ApiResponse<UserSearchProfileResponse> getUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
@@ -62,7 +62,8 @@ public class UserSearchProfileController {
         @GetMapping("/{searchProfileId}/skills")
         @Operation(summary = "Get user search profile skills", description = "Get all skills in a user's search profile")
         public ApiResponse<List<UserSearchProfileSkillResponse>> getUserSearchProfileSkills(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
@@ -72,7 +73,7 @@ public class UserSearchProfileController {
         @GetMapping("/employments")
         @Operation(summary = "Get user search profile employments", description = "Get all employment types in a user's search profile")
         public ApiResponse<List<UserSearchProfileEmploymentResponse>> getUserSearchProfileEmployments(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
@@ -82,7 +83,7 @@ public class UserSearchProfileController {
         @GetMapping("/titles")
         @Operation(summary = "Get user search profile job titles", description = "Get all job titles in a user's search profile")
         public ApiResponse<List<UserSearchProfileJobTitleResponse>> getUserSearchProfileJobTitles(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
@@ -92,7 +93,7 @@ public class UserSearchProfileController {
         @PutMapping
         @Operation(summary = "Update user search profile", description = "Update the search profile for a specific user")
         public ApiResponse<UserSearchProfileResponse> updateUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
                         @RequestBody UpdateSearchProfile request) {
                 authorize(userId, authUserId);
@@ -103,7 +104,7 @@ public class UserSearchProfileController {
         @PostMapping
         @Operation(summary = "Create user search profile", description = "Create a search profile for a specific user")
         public ApiResponse<UserSearchProfileResponse> createUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
                         @RequestBody CreateSearchProfile request) {
                 authorize(userId, authUserId);
@@ -114,20 +115,21 @@ public class UserSearchProfileController {
         @PostMapping("/{searchProfileId}/skills")
         @Operation(summary = "Add skill to user search profile", description = "Add a skill to a user's search profile")
         public ApiResponse<List<UserSearchProfileSkillResponse>> addSkillToUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
-                        @RequestParam("searchProfileId") UUID searchProfileId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
                         @RequestBody CreateSearchProfileSkill request) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
-                                skillService.addSkillToUserSearchProfile(request.getSkillIds(), searchProfileId));
+                                skillService.addSkillToUserSearchProfile(request.getSkillIds(), searchProfileId,
+                                                userId));
         }
 
         @PostMapping("/{searchProfileId}/employments")
         @Operation(summary = "Add employment to user search profile", description = "Add an employment type to a user's search profile")
         public ApiResponse<List<UserSearchProfileEmploymentResponse>> addEmploymentToUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
-                        @RequestParam("searchProfileId") UUID searchProfileId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
                         @RequestBody CreateSearchProfileEmployment request) {
                 authorize(userId, authUserId);
@@ -138,24 +140,26 @@ public class UserSearchProfileController {
         @PostMapping("/{searchProfileId}/titles")
         @Operation(summary = "Add job title to user search profile", description = "Add a job title to a user's search profile")
         public ApiResponse<List<UserSearchProfileJobTitleResponse>> addJobTitleToUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
-                        @RequestParam("searchProfileId") UUID searchProfileId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
                         @RequestBody CreateSearchProfileJobTitle request) {
                 authorize(userId, authUserId);
                 return ApiResponse.success(
-                                userSearchProfileJobTitleService.createUserSearchProfileJobTitle(request, userId));
+                                userSearchProfileJobTitleService.createUserSearchProfileJobTitle(request,
+                                                searchProfileId, userId));
         }
 
         @DeleteMapping("/{searchProfileId}/skills/{skillId}")
         @ResponseStatus(HttpStatus.NO_CONTENT)
         @Operation(summary = "Remove skill from user search profile", description = "Remove a skill from a user's search profile")
         public ApiResponse<Void> removeSkillFromUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
-                        @Parameter(description = "Skill ID") @RequestParam UUID skillId) {
+                        @PathVariable("skillId") UUID skillId) {
                 authorize(userId, authUserId);
-                skillService.removeSkillFromUserSearchProfile(userId, skillId);
+                skillService.removeSkillFromUserSearchProfile(searchProfileId, skillId);
                 return ApiResponse.success("Skill removed from user search profile successfully", null);
         }
 
@@ -163,11 +167,12 @@ public class UserSearchProfileController {
         @ResponseStatus(HttpStatus.NO_CONTENT)
         @Operation(summary = "Remove employment from user search profile", description = "Remove an employment type from a user's search profile")
         public ApiResponse<Void> removeEmploymentFromUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
-                        @Parameter(description = "Employment ID") @RequestParam UUID employmentId) {
+                        @PathVariable("employmentId") UUID employmentId) {
                 authorize(userId, authUserId);
-                employmentService.removeEmploymentFromUserSearchProfile(userId, employmentId);
+                employmentService.removeEmploymentFromUserSearchProfile(searchProfileId, employmentId);
                 return ApiResponse.success("Employment removed from user search profile successfully", null);
         }
 
@@ -175,11 +180,12 @@ public class UserSearchProfileController {
         @ResponseStatus(HttpStatus.NO_CONTENT)
         @Operation(summary = "Remove job title from user search profile", description = "Remove a job title from a user's search profile")
         public ApiResponse<Void> removeJobTitleFromUserSearchProfile(
-                        @RequestParam("userId") UUID userId,
+                        @PathVariable("userId") UUID userId,
+                        @PathVariable("searchProfileId") UUID searchProfileId,
                         @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
-                        @Parameter(description = "Job Title ID") @RequestParam UUID jobTitleId) {
+                        @PathVariable("jobTitleId") UUID jobTitleId) {
                 authorize(userId, authUserId);
-                userSearchProfileJobTitleService.deleteUserSearchProfileJobTitle(userId, jobTitleId);
+                userSearchProfileJobTitleService.deleteUserSearchProfileJobTitle(searchProfileId, jobTitleId);
                 return ApiResponse.success("Job title removed from user search profile successfully", null);
         }
 

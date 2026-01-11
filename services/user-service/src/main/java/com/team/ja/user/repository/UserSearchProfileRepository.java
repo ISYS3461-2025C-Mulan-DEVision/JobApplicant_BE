@@ -1,5 +1,6 @@
 package com.team.ja.user.repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -16,5 +17,7 @@ public interface UserSearchProfileRepository extends JpaRepository<UserSearchPro
     Optional<UserSearchProfile> findByIdAndUserId(UUID id, UUID userId);
 
     Optional<UserSearchProfile> findByIdAndIsActiveTrue(UUID id);
+
+    List<UserSearchProfile> findByIsActiveTrue();
 
 }

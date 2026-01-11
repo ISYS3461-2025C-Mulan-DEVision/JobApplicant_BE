@@ -15,19 +15,20 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface UserRepository
-        extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
-    Optional<User> findByEmailAndIsActiveTrue(String email);
+                extends JpaRepository<User, UUID>, JpaSpecificationExecutor<User> {
+        Optional<User> findByEmailAndIsActiveTrue(String email);
 
-    boolean existsByEmail(String email);
+        boolean existsByEmail(String email);
 
-    @Query(value = "SELECT * FROM users WHERE fts_document @@ websearch_to_tsquery('english', :query)", nativeQuery = true)
-    List<User> findByFts(@Param("query") String query);
+        @Query(value = "SELECT * FROM users WHERE fts_document @@ websearch_to_tsquery('english', :query)", nativeQuery = true)
+        List<User> findByFts(@Param("query") String query);
 
-    @Query("SELECT u FROM User u " +
-            "LEFT JOIN FETCH u.userSkills " +
-            "LEFT JOIN FETCH u.education " +
-            "LEFT JOIN FETCH u.workExperience " +
-            "LEFT JOIN FETCH u.portfolioItems " +
-            "WHERE u.id = :userId")
-    Optional<User> findFullUserById(@Param("userId") UUID userId);
+        // TODO: Move to use another safer method to fetch user with associations
+        @Query("SELECT u FROM User u " +
+                        "LEFT JOIN FETCH u.userSkills " +
+                        "LEFT JOIN FETCH u.education " +
+                        "LEFT JOIN FETCH u.workExperience " +
+                        "LEFT JOIN FETCH u.portfolioItems " +
+                        "WHERE u.id = :userId")
+        Optional<User> findFullUserById(@Param("userId") UUID userId);
 }

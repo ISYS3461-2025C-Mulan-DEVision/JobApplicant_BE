@@ -12,11 +12,11 @@ public interface UserSearchProfileSkillRepository extends JpaRepository<UserSear
 
     List<UserSearchProfileSkill> findByUserSearchProfileIdAndIsActiveTrue(UUID userSearchProfileId);
 
-    List<UserSearchProfileSkill> findByUserSearchProfileId(UUID userSearchProfileId);
-
     boolean existsByUserSearchProfileId(UUID userSearchProfileId);
 
     Optional<UserSearchProfileSkill> findByUserSearchProfileIdAndSkillIdAndIsActiveTrue(UUID userSearchProfileId,
             UUID skillId);
+
+    List<UserSearchProfileSkill> findByUserSearchProfileId(UUID userSearchProfileId);
 
 }

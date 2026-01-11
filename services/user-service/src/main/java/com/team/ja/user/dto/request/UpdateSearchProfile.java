@@ -29,4 +29,7 @@ public class UpdateSearchProfile {
     @Schema(description = "Highest education level associated with this search profile", example = "MASTER")
     private EducationLevel educationLevel;
 
+    @Schema(description = "Is Fresher flag for this search profile", example = "false")
+    private Boolean isFresher;
+
 }

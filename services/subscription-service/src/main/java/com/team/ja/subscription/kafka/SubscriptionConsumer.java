@@ -94,7 +94,17 @@ public class SubscriptionConsumer {
         // Publish subscription changed event to notify other services
         kafkaTemplate.send(KafkaTopics.SUBSCRIPTION_ACTIVATE, SubscriptionActivateEvent.builder()
                 .payerId(event.getPayerId())
-                .build());
+                .build())
+                .whenComplete((result, ex) -> {
+                    if (ex == null) {
+                        log.info("Sent SubscriptionActivateEvent for user {} [partition: {}, offset: {}]",
+                                event.getPayerId(),
+                                result.getRecordMetadata().partition(),
+                                result.getRecordMetadata().offset());
+                    } else {
+                        log.error("Failed to send SubscriptionActivateEvent for user {}", event.getPayerId(), ex);
+                    }
+                });
         log.info("Published premium activation event for user ID: {}",
                 event.getPayerId());
 
