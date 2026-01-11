@@ -1,6 +1,7 @@
 package com.team.ja.user.service;
 
 import com.team.ja.user.dto.response.SkillResponse;
+import com.team.ja.user.dto.response.UserSearchProfileSkillResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +47,7 @@ public interface SkillService {
     /**
      * Add skills to a user.
      * 
-     * @param userId User ID
+     * @param userId   User ID
      * @param skillIds Skill IDs to add
      * @return List of user's skills after adding
      */
@@ -55,7 +56,7 @@ public interface SkillService {
     /**
      * Remove a skill from a user.
      * 
-     * @param userId User ID
+     * @param userId  User ID
      * @param skillId Skill ID to remove
      */
     void removeSkillFromUser(UUID userId, UUID skillId);
@@ -75,5 +76,11 @@ public interface SkillService {
      * @return Created skill
      */
     SkillResponse createSkill(String name);
-}
 
+    List<UserSearchProfileSkillResponse> addSkillToUserSearchProfile(List<UUID> skillIds, UUID searchProfileId);
+
+    void removeSkillFromUserSearchProfile(UUID skillId, UUID searchProfileId);
+
+    List<UserSearchProfileSkillResponse> getUserSearchProfileSkills(UUID searchProfileId);
+
+}

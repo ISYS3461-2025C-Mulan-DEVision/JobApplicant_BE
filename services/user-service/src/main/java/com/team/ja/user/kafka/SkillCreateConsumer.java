@@ -11,7 +11,6 @@ import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.model.Skill;
 import com.team.ja.user.repository.SkillRepository;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

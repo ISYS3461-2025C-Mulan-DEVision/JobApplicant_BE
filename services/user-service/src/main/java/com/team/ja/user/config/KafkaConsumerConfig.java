@@ -2,6 +2,7 @@ package com.team.ja.user.config;
 
 import com.team.ja.common.event.SkillCreateEvent;
 import com.team.ja.common.event.UserMigrationEvent;
+import com.team.ja.common.event.UserProfileCreateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -37,15 +38,6 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Value("${spring.kafka.properties.security.protocol:SASL_PLAINTEXT}")
-    private String securityProtocol;
-
-    @Value("${spring.kafka.properties.sasl.mechanism:PLAIN}")
-    private String saslMechanism;
-
-    @Value("${spring.kafka.properties.sasl.jaas.config:}")
-    private String saslJaasConfig;
-
     @Bean
     public ConsumerFactory<String, UserRegisteredEvent> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
@@ -55,13 +47,6 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -82,13 +67,6 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -116,13 +94,6 @@ public class KafkaConsumerConfig {
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event,com.team.ja.user.dto.request");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        // Add SASL/SSL Configuration
-        // configProps.put("security.protocol", securityProtocol);
-        // configProps.put("sasl.mechanism", saslMechanism);
-        // if (saslJaasConfig != null && !saslJaasConfig.isEmpty()) {
-        // configProps.put("sasl.jaas.config", saslJaasConfig);
-        // }
-
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -147,5 +118,25 @@ public class KafkaConsumerConfig {
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
 
         return errorHandler;
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserProfileCreateEvent> userProfileCreateEventConsumerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        return new DefaultKafkaConsumerFactory<>(configProps);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> userProfileCreateEventKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(userProfileCreateEventConsumerFactory());
+        return factory;
     }
 }

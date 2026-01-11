@@ -6,6 +6,7 @@ import com.team.ja.common.enumeration.EmploymentType;
 import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.common.event.UserProfileUpdatedEvent;
+import com.team.ja.common.event.UserSearchProfileUpdateEvent;
 import com.team.ja.common.exception.BadRequestException;
 import com.team.ja.common.exception.ConflictException;
 import com.team.ja.common.exception.NotFoundException;
@@ -28,6 +29,7 @@ import com.team.ja.user.mapper.UserWorkExperienceMapper;
 import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
+import com.team.ja.user.model.UserSearchProfile;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.model.UserWorkExperience;
 import com.team.ja.user.model.Country;
@@ -35,6 +37,9 @@ import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.SkillRepository;
 import com.team.ja.user.repository.UserEducationRepository;
 import com.team.ja.user.repository.UserRepository;
+import com.team.ja.user.repository.UserSearchProfileEmploymentRepository;
+import com.team.ja.user.repository.UserSearchProfileJobTitleRepository;
+import com.team.ja.user.repository.UserSearchProfileRepository;
 import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
 import com.team.ja.user.repository.specification.UserSpecification;
@@ -47,8 +52,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Comparator;
 import java.util.UUID;
+import java.util.stream.Collectors;
+
 import javax.imageio.ImageIO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,6 +98,12 @@ public class UserServiceImpl implements UserService {
     private final ShardLookupService shardLookupService;
 
     private final KafkaTemplate<String, UserMigrationEvent> userMigrationEventKafkaTemplate;
+    private final KafkaTemplate<String, UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate;
+
+    // For getting Kafka for JM
+    private final UserSearchProfileEmploymentRepository userSearchProfileEmploymentRepository;
+    private final UserSearchProfileRepository userSearchProfileRepository;
+    private final UserSearchProfileJobTitleRepository userSearchProfileJobTitleRepository;
 
     private static final int AVATAR_SIZE = 256;
     private static final List<String> SUPPORTED_IMAGE_TYPES = List.of(
@@ -192,6 +206,48 @@ public class UserServiceImpl implements UserService {
 
                     userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent);
 
+                    log.info("Published user migration event for user {} to shard {}.", userId, targetShard);
+
+                    String countryAbbreviation = countryRepository.findById(user.getCountryId())
+                            .map(c -> c.getAbbreviation())
+                            .orElse(null);
+                    List<UserEducation> educationLevel = userEducationRepository
+                            .findByUserIdOrderByEducationLevelRankDesc(userId);
+
+                    Optional<UserSearchProfile> userSearchProfile = userSearchProfileRepository.findByUserId(userId);
+
+                    List<EmploymentType> employmentTypes = userSearchProfileEmploymentRepository
+                            .findByUserSearchProfileIdAndIsActiveTrue(
+                                    userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                            .stream()
+                            .map(ute -> ute.getEmploymentType())
+                            .collect(Collectors.toList());
+
+                    List<String> jobTitles = userSearchProfileJobTitleRepository
+                            .findByUserSearchProfileIdAndIsActiveTrue(
+                                    userSearchProfile.isPresent() ? userSearchProfile.get().getId() : null)
+                            .stream()
+                            .map(utj -> utj.getJobTitle())
+                            .collect(Collectors.toList());
+
+                    List<UserSkill> allUserSkillIds = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+
+                    UserSearchProfileUpdateEvent searchProfileEvent = UserSearchProfileUpdateEvent.builder()
+                            .userId(userId)
+                            .countryAbbreviation(countryAbbreviation)
+                            .educationLevel(educationLevel.isEmpty() ? null
+                                    : educationLevel.get(0).getEducationLevel().name())
+                            .employmentTypes(employmentTypes.stream()
+                                    .map(EmploymentType::name)
+                                    .collect(Collectors.toList()))
+                            .minSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMin() : null)
+                            .maxSalary(userSearchProfile.isPresent() ? userSearchProfile.get().getSalaryMax() : null)
+                            .jobTitles(jobTitles)
+                            .skillIds(allUserSkillIds.stream()
+                                    .map(UserSkill::getSkillId)
+                                    .collect(Collectors.toList()))
+                            .build();
+                    userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
                 }
 
                 Country newCountry = countryRepository

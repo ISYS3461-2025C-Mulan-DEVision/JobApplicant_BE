@@ -14,9 +14,11 @@ import org.springframework.stereotype.Service;
 import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.config.sharding.ShardingProperties;
 import com.team.ja.user.model.User;
+import com.team.ja.user.model.UserSearchProfile;
 import com.team.ja.user.model.Country;
 import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.UserRepository;
+import com.team.ja.user.repository.UserSearchProfileRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,7 @@ public class ShardLookupService {
     private final ShardingProperties shardingProperties;
     private final UserRepository userRepository;
     private final CountryRepository countryRepository;
+    private final UserSearchProfileRepository userSearchProfileRepository;
 
     private static final Duration CACHE_TTL = Duration.ofDays(30);
     private static final String USER_ID_SHARD_PREFIX = "user:shard:userId:";
@@ -52,6 +55,20 @@ public class ShardLookupService {
         String foundShard = scattergatherLookupById(userId);
         if (foundShard != null) {
             cachedUserIdShard(userId, foundShard);
+        }
+        return foundShard;
+    }
+
+    public String findShardIdBySearchProfileId(UUID searchProfileId) {
+        String cacheKey = getCachedShard(searchProfileId);
+
+        if (cacheKey != null) {
+            return cacheKey;
+        }
+
+        String foundShard = scattergatherLookupBySearchProfileId(searchProfileId);
+        if (foundShard != null) {
+            cachedUserIdShard(searchProfileId, foundShard);
         }
         return foundShard;
     }
@@ -124,6 +141,21 @@ public class ShardLookupService {
         }
     }
 
+    public Optional<UserSearchProfile> getUserSearchProfileById(UUID searchProfileId) {
+        String shardId = findShardIdBySearchProfileId(searchProfileId);
+        if (shardId == null) {
+            log.warn("Shard ID not found for search profile ID: {}", searchProfileId);
+            return Optional.empty();
+        }
+
+        ShardContext.setShardKey(shardId);
+        try {
+            return userSearchProfileRepository.findByIdAndIsActiveTrue(searchProfileId);
+        } finally {
+            ShardContext.clear();
+        }
+    }
+
     public Optional<User> getUserByEmail(String email) {
         String shardId = findShardByUserEmail(email);
         if (shardId == null) {
@@ -157,6 +189,27 @@ public class ShardLookupService {
             }
         }
         log.warn("User ID: {} not found in any shard", userId);
+        return null;
+    }
+
+    private String scattergatherLookupBySearchProfileId(UUID searchProfileId) {
+        List<String> shardKeys = new ArrayList<>(shardingProperties.getShards().keySet());
+
+        for (String shardKey : shardKeys) {
+            try {
+                ShardContext.setShardKey(shardKey);
+                boolean exists = userSearchProfileRepository.existsById(searchProfileId);
+                if (exists) {
+                    log.info("Found search profile ID: {} in shard: {}", searchProfileId, shardKey);
+                    return shardKey;
+                }
+            } catch (Exception e) {
+                log.error("Error querying shard: {} for search profile ID: {}", shardKey, searchProfileId, e);
+            } finally {
+                ShardContext.clear();
+            }
+        }
+        log.warn("Search profile ID: {} not found in any shard", searchProfileId);
         return null;
     }
 
