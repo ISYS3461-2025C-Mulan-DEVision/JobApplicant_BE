@@ -10,13 +10,13 @@ import com.team.ja.common.dto.ApiResponse;
 import com.team.ja.subscription.dto.request.CreatePaymentRequest;
 import com.team.ja.subscription.dto.response.PaymentResponse;
 
-@FeignClient(name = "payment-service", url = "${feign.client.payment-service.url}")
+@FeignClient(name = "job-manager-payment")
 public interface PaymentClient {
 
-    @GetMapping("/{paymentId}")
+    @GetMapping("/api/internal/payment/{paymentId}")
     public ApiResponse<PaymentResponse> getPayment(@PathVariable("paymentId") String paymentId);
 
-    @PostMapping
+    @PostMapping("/api/internal/payment")
     public ApiResponse<PaymentResponse> createPayment(@RequestBody CreatePaymentRequest request);
 
 }

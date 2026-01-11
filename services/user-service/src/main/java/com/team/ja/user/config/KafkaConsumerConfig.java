@@ -119,6 +119,23 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
+    // @Bean
+    // public CommonErrorHandler jobPostingErrorHandler(KafkaTemplate<String,
+    // JobPostingEvent> template) {
+
+    // DeadLetterPublishingRecoverer recoverer = new
+    // DeadLetterPublishingRecoverer(template);
+
+    // FixedBackOff backOff = new FixedBackOff(2000L, 3);
+
+    // DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer,
+    // backOff);
+
+    // errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
+
+    // return errorHandler;
+    // }
+
     @Bean
     public CommonErrorHandler migrateErrorHandler(KafkaTemplate<String, UserMigrationEvent> template) {
 
@@ -150,6 +167,7 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> userProfileCreateEventKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, UserProfileCreateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(userProfileCreateEventConsumerFactory());
+        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(2000L, 3)));
         return factory;
     }
 
@@ -160,7 +178,9 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
+        configProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         return new DefaultKafkaConsumerFactory<>(configProps);
@@ -170,6 +190,8 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, JobPostingEvent> jobPostingEventKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, JobPostingEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(jobPostingEventConsumerFactory());
+        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(2000L, 3)));
         return factory;
     }
+
 }

@@ -248,6 +248,7 @@ public class UserMigrationService {
 
                 UserSearchProfile targetSearchProfile = UserSearchProfile.builder()
                                 .id(sourceSearchProfile.getId())
+                                .userId(targetUser.getId())
                                 .user(targetUser)
                                 .countryAbbreviation(sourceSearchProfile.getCountryAbbreviation())
                                 .salaryMin(sourceSearchProfile.getSalaryMin())
