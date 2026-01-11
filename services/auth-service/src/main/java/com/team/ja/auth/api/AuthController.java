@@ -1,8 +1,11 @@
 package com.team.ja.auth.api;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
+import com.team.ja.auth.dto.request.ForgotPasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
+import com.team.ja.auth.dto.request.ResetPasswordRequest;
 import com.team.ja.auth.dto.response.AuthResponse;
 import com.team.ja.auth.service.AuthService;
 import com.team.ja.common.dto.ApiResponse;
@@ -164,6 +167,57 @@ public class AuthController {
             return ApiResponse.success("Logged out successfully");
         }
         return ApiResponse.error("Invalid authorization header");
+    }
+
+    @PostMapping("/change-password")
+    @Operation(
+        summary = "Change password",
+        description = "Change user password. Requires current password verification. Internal endpoint for user-service."
+    )
+    public ApiResponse<String> changePassword(
+        @RequestParam String email,
+        @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(email, request);
+        return ApiResponse.success("Password changed successfully");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(
+        summary = "Forgot password",
+        description = "Initiate forgot password flow. Sends password reset email if email exists. Always returns success to prevent email enumeration."
+    )
+    public ApiResponse<String> forgotPassword(
+        @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request);
+        return ApiResponse.success("If the email is registered, a password reset link has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(
+        summary = "Reset password",
+        description = "Reset password using token from email. Token expires in 1 hour.",
+        responses = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "200",
+                description = "Password reset successful"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "400",
+                description = "Invalid or expired token, or password validation failed"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                responseCode = "404",
+                description = "Token not found"
+            )
+        }
+    )
+    public ApiResponse<String> resetPassword(
+        @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        authService.resetPassword(request);
+        return ApiResponse.success("Password has been reset successfully. You can now login with your new password.");
     }
 
     @GetMapping("/validate")

@@ -9,7 +9,7 @@ import com.team.ja.user.dto.response.UserSearchProfileJobTitleResponse;
 public interface UserSearchProfileJobTitleService {
 
     List<UserSearchProfileJobTitleResponse> createUserSearchProfileJobTitle(CreateSearchProfileJobTitle request,
-            UUID searchProfileId);
+            UUID searchProfileId, UUID userId);
 
     void deleteUserSearchProfileJobTitle(UUID searchProfileId, UUID jobTitleId);
 

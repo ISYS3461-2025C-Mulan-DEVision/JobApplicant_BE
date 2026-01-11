@@ -13,6 +13,7 @@ import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.user.config.S3FileService;
 import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.config.sharding.ShardingProperties;
+import com.team.ja.user.dto.request.ChangePasswordRequest;
 import com.team.ja.user.dto.request.CreateUserRequest;
 import com.team.ja.user.dto.request.UpdateUserRequest;
 import com.team.ja.user.dto.response.SkillResponse;
@@ -43,6 +44,7 @@ import com.team.ja.user.repository.UserSearchProfileRepository;
 import com.team.ja.user.repository.UserSkillRepository;
 import com.team.ja.user.repository.UserWorkExperienceRepository;
 import com.team.ja.user.repository.specification.UserSpecification;
+import com.team.ja.user.service.AuthServiceClient;
 import com.team.ja.user.service.UserService;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -96,6 +98,7 @@ public class UserServiceImpl implements UserService {
     private final CountryMapper countryMapper;
     private final ShardingProperties shardingProperties;
     private final ShardLookupService shardLookupService;
+    private final AuthServiceClient authServiceClient;
 
     private final KafkaTemplate<String, UserMigrationEvent> userMigrationEventKafkaTemplate;
     private final KafkaTemplate<String, UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate;
@@ -204,13 +207,26 @@ public class UserServiceImpl implements UserService {
                             .newCountryAbbreviation(request.getCountryAbbreviation())
                             .build();
 
-                    userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent);
+                    userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent)
+                            .whenComplete((result, ex) -> {
+                                if (ex == null) {
+                                    log.info("Sent UserMigrationEvent for user {} [partition: {}, offset: {}]", 
+                                            userId,
+                                            result.getRecordMetadata().partition(),
+                                            result.getRecordMetadata().offset());
+                                } else {
+                                    log.error("Failed to send UserMigrationEvent for user {}", userId, ex);
+                                }
+                            });
 
                     log.info("Published user migration event for user {} to shard {}.", userId, targetShard);
 
-                    String countryAbbreviation = countryRepository.findById(user.getCountryId())
-                            .map(c -> c.getAbbreviation())
-                            .orElse(null);
+                    String countryAbbreviation = null;
+                    if (user != null && user.getCountryId() != null) {
+                        countryAbbreviation = countryRepository.findById(user.getCountryId())
+                                .map(c -> c.getAbbreviation())
+                                .orElse(null);
+                    }
                     List<UserEducation> educationLevel = userEducationRepository
                             .findByUserIdOrderByEducationLevelRankDesc(userId);
 
@@ -247,7 +263,17 @@ public class UserServiceImpl implements UserService {
                                     .map(UserSkill::getSkillId)
                                     .collect(Collectors.toList()))
                             .build();
-                    userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent);
+                    userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
+                            .whenComplete((result, ex) -> {
+                                if (ex == null) {
+                                    log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]", 
+                                            userId,
+                                            result.getRecordMetadata().partition(),
+                                            result.getRecordMetadata().offset());
+                                } else {
+                                    log.error("Failed to send UserSearchProfileUpdateEvent for user {}", userId, ex);
+                                }
+                            });
                 }
 
                 Country newCountry = countryRepository
@@ -840,6 +866,30 @@ public class UserServiceImpl implements UserService {
         try {
             log.info("email: '{}' exist in db", email);
             return userRepository.existsByEmail(email);
+        } finally {
+            ShardContext.clear();
+        }
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(UUID userId, ChangePasswordRequest request) {
+        log.info("Changing password for user: {}", userId);
+
+        // Get user to retrieve email
+        String shardKey = shardLookupService.findShardIdByUserId(userId);
+        ShardContext.setShardKey(shardKey);
+
+        try {
+            User user = userRepository
+                .findById(userId)
+                .filter(User::isActive)
+                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+
+            // Call auth-service to change password
+            authServiceClient.changePassword(user.getEmail(), request);
+
+            log.info("Password changed successfully for user: {}", userId);
         } finally {
             ShardContext.clear();
         }

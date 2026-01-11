@@ -12,17 +12,30 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.user.config.sharding.ShardContext;
 import com.team.ja.user.dto.request.UserDto;
+import com.team.ja.user.dto.request.UserMigrationDto;
 import com.team.ja.user.dto.request.UserWorkExperienceDto;
 import com.team.ja.user.model.Country;
 import com.team.ja.user.model.Skill;
 import com.team.ja.user.model.User;
 import com.team.ja.user.model.UserEducation;
 import com.team.ja.user.model.UserPortfolioItem;
+import com.team.ja.user.model.UserSearchProfile;
+import com.team.ja.user.model.UserSearchProfileEmploymentStatus;
+import com.team.ja.user.model.UserSearchProfileJobTitle;
+import com.team.ja.user.model.UserSearchProfileSkill;
 import com.team.ja.user.model.UserSkill;
 import com.team.ja.user.model.UserWorkExperience;
 import com.team.ja.user.repository.CountryRepository;
 import com.team.ja.user.repository.SkillRepository;
+import com.team.ja.user.repository.UserEducationRepository;
+import com.team.ja.user.repository.UserPortfolioItemRepository;
 import com.team.ja.user.repository.UserRepository;
+import com.team.ja.user.repository.UserSearchProfileEmploymentRepository;
+import com.team.ja.user.repository.UserSearchProfileJobTitleRepository;
+import com.team.ja.user.repository.UserSearchProfileRepository;
+import com.team.ja.user.repository.UserSearchProfileSkillRepository;
+import com.team.ja.user.repository.UserSkillRepository;
+import com.team.ja.user.repository.UserWorkExperienceRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +50,14 @@ public class UserMigrationService {
         private final CountryRepository countryRepository;
         private final SkillRepository skillRepository;
         private final TransactionTemplate transactionTemplate;
+        private final UserEducationRepository educationRepository;
+        private final UserWorkExperienceRepository workExperienceRepository;
+        private final UserPortfolioItemRepository portfolioItemRepository;
+        private final UserSearchProfileRepository searchProfileRepository;
+        private final UserSearchProfileSkillRepository searchProfileSkillRepository;
+        private final UserSearchProfileJobTitleRepository searchProfileJobTitleRepository;
+        private final UserSearchProfileEmploymentRepository searchProfileEmploymentRepository;
+        private final UserSkillRepository userSkillRepository;
 
         public void migrateUserData(UserMigrationEvent event) {
                 log.info("Migrating user data for userId: {} from shard: {} to shard: {}",
@@ -45,7 +66,7 @@ public class UserMigrationService {
                 try {
                         AtomicReference<String> countryAbbreviationRef = new AtomicReference<>();
 
-                        UserDto migrationDto = loadUserFromSource(event, countryAbbreviationRef);
+                        UserMigrationDto migrationDto = loadUserFromSource(event, countryAbbreviationRef);
 
                         saveUserToTarget(event, migrationDto, countryAbbreviationRef.get());
 
@@ -60,14 +81,13 @@ public class UserMigrationService {
                 }
         }
 
-        private UserDto loadUserFromSource(UserMigrationEvent event, AtomicReference<String> countryAbbreviationRef) {
+        private UserMigrationDto loadUserFromSource(UserMigrationEvent event,
+                        AtomicReference<String> countryAbbreviationRef) {
                 ShardContext.setShardKey(event.getSourceShardId());
                 try {
                         return transactionTemplate.execute(status -> {
-                                User user = userRepository.findById(event.getUserId())
-                                                .orElseThrow(() -> new IllegalArgumentException(
-                                                                "User not found in source shard: "
-                                                                                + event.getUserId()));
+                                // Get all data separately - no Hibernate fetch issues
+                                UserMigrationDto data = getMigrationData(event.getUserId());
 
                                 if (event != null) {
                                         countryRepository
@@ -77,19 +97,42 @@ public class UserMigrationService {
                                                                         .set(country.getAbbreviation()));
                                 }
 
-                                Hibernate.initialize(user.getUserSkills());
-                                Hibernate.initialize(user.getEducation());
-                                Hibernate.initialize(user.getWorkExperience());
-                                Hibernate.initialize(user.getPortfolioItems());
-
-                                return mapToDto(user);
+                                return data;
                         });
                 } finally {
                         ShardContext.clear();
                 }
         }
 
-        private void saveUserToTarget(UserMigrationEvent event, UserDto migrationDto,
+        private UserMigrationDto getMigrationData(UUID userId) {
+                User user = userRepository.findById(userId)
+                                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
+                UserSearchProfile searchProfile = searchProfileRepository.findByUserId(userId).orElse(null);
+
+                return UserMigrationDto.builder()
+                                .user(user)
+                                .education(educationRepository.findByUserId(userId))
+                                .workExperience(workExperienceRepository.findByUserId(userId))
+                                .skills(userSkillRepository.findByUserId(userId))
+                                .portfolioItems(portfolioItemRepository.findByUserId(userId))
+                                .searchProfile(searchProfile)
+                                .searchProfileSkills(searchProfile != null
+                                                ? searchProfileSkillRepository
+                                                                .findByUserSearchProfileId(searchProfile.getId())
+                                                : new ArrayList<>())
+                                .searchProfileJobTitles(searchProfile != null
+                                                ? searchProfileJobTitleRepository
+                                                                .findByUserSearchProfileId(searchProfile.getId())
+                                                : new ArrayList<>())
+                                .searchProfileEmployments(searchProfile != null
+                                                ? searchProfileEmploymentRepository
+                                                                .findByUserSearchProfileId(searchProfile.getId())
+                                                : new ArrayList<>())
+                                .build();
+        }
+
+        private void saveUserToTarget(UserMigrationEvent event, UserMigrationDto migrationData,
                         String targetCountryAbbreviation) {
                 ShardContext.setShardKey(event.getTargetShardId());
                 try {
@@ -100,107 +143,163 @@ public class UserMigrationService {
                                         return;
                                 }
 
+                                User sourceUser = migrationData.getUser();
                                 User targetUser = User.builder()
-                                                .id(migrationDto.getId())
-                                                .email(migrationDto.getEmail())
-                                                .firstName(migrationDto.getFirstName())
-                                                .lastName(migrationDto.getLastName())
-                                                .phone(migrationDto.getPhone())
-                                                .address(migrationDto.getAddress())
+                                                .id(sourceUser.getId())
+                                                .email(sourceUser.getEmail())
+                                                .firstName(sourceUser.getFirstName())
+                                                .lastName(sourceUser.getLastName())
+                                                .phone(sourceUser.getPhone())
+                                                .address(sourceUser.getAddress())
+                                                .city(sourceUser.getCity())
+                                                .objectiveSummary(sourceUser.getObjectiveSummary())
+                                                .avatarUrl(sourceUser.getAvatarUrl())
+                                                .isPremium(sourceUser.isPremium())
                                                 .build();
 
-                                String localCountryAbbreviation = null;
+                                // Set country
                                 if (targetCountryAbbreviation != null) {
-                                        localCountryAbbreviation = countryRepository
+                                        targetUser.setCountryId(countryRepository
                                                         .findByAbbreviationIgnoreCaseAndIsActiveTrue(
                                                                         targetCountryAbbreviation)
-                                                        .map(Country::getAbbreviation)
-                                                        .orElse(null);
+                                                        .map(Country::getId)
+                                                        .orElse(null));
                                 }
 
-                                if (localCountryAbbreviation == null) {
-                                        localCountryAbbreviation = event.getNewCountryAbbreviation();
-                                        log.warn("Could not resolve country code '{}' on target shard. Falling back to original abbreviation: {}",
-                                                        targetCountryAbbreviation, localCountryAbbreviation);
-                                }
-
-                                targetUser.setCountryId(localCountryAbbreviation != null ? countryRepository
-                                                .findByAbbreviationIgnoreCaseAndIsActiveTrue(
-                                                                localCountryAbbreviation)
-                                                .map(Country::getId)
-                                                .orElse(null) : null);
-
-                                if (migrationDto.getEducation() != null) {
-                                        targetUser.setEducation(migrationDto.getEducation().stream()
-                                                        .<UserEducation>map(education -> UserEducation.builder()
-                                                                        .id(education.getId())
+                                // Save education
+                                if (migrationData.getEducation() != null && !migrationData.getEducation().isEmpty()) {
+                                        targetUser.setEducation(migrationData.getEducation().stream()
+                                                        .map(e -> UserEducation.builder()
+                                                                        .id(e.getId())
                                                                         .userId(targetUser.getId())
                                                                         .user(targetUser)
-                                                                        .institution(education.getInstitution())
-                                                                        .degree(education.getDegree())
-                                                                        .gpa(education.getGpa())
-                                                                        .fieldOfStudy(education.getFieldOfStudy())
-                                                                        .startAt(education.getStartAt())
-                                                                        .endAt(education.getEndAt())
+                                                                        .institution(e.getInstitution())
+                                                                        .degree(e.getDegree())
+                                                                        .gpa(e.getGpa())
+                                                                        .fieldOfStudy(e.getFieldOfStudy())
+                                                                        .startAt(e.getStartAt())
+                                                                        .endAt(e.getEndAt())
                                                                         .build())
-                                                        .toList());
+                                                        .collect(Collectors.toList()));
                                 }
 
-                                if (migrationDto.getWorkExperience() != null) {
-                                        targetUser.setWorkExperience(migrationDto.getWorkExperience().stream()
-                                                        .<UserWorkExperience>map(experience -> UserWorkExperience
-                                                                        .builder()
-                                                                        .id(experience.getId())
+                                // Save work experience
+                                if (migrationData.getWorkExperience() != null
+                                                && !migrationData.getWorkExperience().isEmpty()) {
+                                        targetUser.setWorkExperience(migrationData.getWorkExperience().stream()
+                                                        .map(w -> UserWorkExperience.builder()
+                                                                        .id(w.getId())
                                                                         .user(targetUser)
-                                                                        .companyName(experience.getCompanyName())
-                                                                        .employmentType(experience.getEmploymentType())
-                                                                        .startAt(experience.getStartAt())
-                                                                        .endAt(experience.getEndAt())
-                                                                        .description(experience.getDescription())
+                                                                        .jobTitle(w.getJobTitle())
+                                                                        .companyName(w.getCompanyName())
+                                                                        .employmentType(w.getEmploymentType())
+                                                                        .countryId(w.getCountryId())
+                                                                        .startAt(w.getStartAt())
+                                                                        .endAt(w.getEndAt())
+                                                                        .isCurrent(w.isCurrent())
+                                                                        .description(w.getDescription())
                                                                         .build())
-                                                        .toList());
+                                                        .collect(Collectors.toList()));
                                 }
 
-                                if (migrationDto.getSkills() != null) {
-                                        targetUser.setUserSkills(
-                                                        migrationDto.getSkills().stream().<UserSkill>map(skill -> {
-                                                                Skill targetSkill = skillRepository
-                                                                                .findByNameIgnoreCaseAndIsActiveTrue(
-                                                                                                skill.getNormalizeName())
-                                                                                .orElseGet(() -> {
-                                                                                        Skill newSkill = Skill.builder()
-                                                                                                        .name(skill.getNormalizeName())
-                                                                                                        .build();
-                                                                                        skillRepository.save(newSkill);
-                                                                                        return newSkill;
-                                                                                });
-                                                                return UserSkill.builder()
-                                                                                .userId(targetUser.getId())
-                                                                                .user(targetUser)
-                                                                                .skillId(targetSkill.getId())
-                                                                                .skill(targetSkill)
-                                                                                .build();
-                                                        }).collect(Collectors.toSet()));
-                                }
-
-                                if (migrationDto.getPortfolioItems() != null) {
-                                        targetUser.setPortfolioItems(migrationDto.getPortfolioItems().stream()
-                                                        .map(item -> UserPortfolioItem.builder()
-                                                                        .id(item.getId())
+                                // Save skills
+                                if (migrationData.getSkills() != null && !migrationData.getSkills().isEmpty()) {
+                                        targetUser.setUserSkills(migrationData.getSkills().stream()
+                                                        .map(us -> UserSkill.builder()
+                                                                        .userId(targetUser.getId())
                                                                         .user(targetUser)
-                                                                        .fileUrl(item.getFileUrl())
-                                                                        .description(item.getDescription())
-                                                                        .mediaType(item.getMediaType())
+                                                                        .skillId(us.getSkillId())
+                                                                        .skill(us.getSkill())
+                                                                        .build())
+                                                        .collect(Collectors.toSet()));
+                                }
+
+                                // Save portfolio items
+                                if (migrationData.getPortfolioItems() != null
+                                                && !migrationData.getPortfolioItems().isEmpty()) {
+                                        targetUser.setPortfolioItems(migrationData.getPortfolioItems().stream()
+                                                        .map(p -> UserPortfolioItem.builder()
+                                                                        .id(p.getId())
+                                                                        .user(targetUser)
+                                                                        .fileUrl(p.getFileUrl())
+                                                                        .description(p.getDescription())
+                                                                        .mediaType(p.getMediaType())
                                                                         .build())
                                                         .collect(Collectors.toSet()));
                                 }
 
                                 userRepository.save(targetUser);
-                                log.info("Successfully saved user to target shard: {}", event.getTargetShardId());
+
+                                // Save search profile
+                                if (migrationData.getSearchProfile() != null) {
+                                        saveSearchProfileToTarget(targetUser, migrationData);
+                                }
+
+                                log.info("Successfully saved user and search profile to target shard: {}",
+                                                event.getTargetShardId());
                         });
                 } finally {
                         ShardContext.clear();
                 }
+        }
+
+        private void saveSearchProfileToTarget(User targetUser, UserMigrationDto migrationData) {
+                UserSearchProfile sourceSearchProfile = migrationData.getSearchProfile();
+
+                UserSearchProfile targetSearchProfile = UserSearchProfile.builder()
+                                .id(sourceSearchProfile.getId())
+                                .user(targetUser)
+                                .countryAbbreviation(sourceSearchProfile.getCountryAbbreviation())
+                                .salaryMin(sourceSearchProfile.getSalaryMin())
+                                .salaryMax(sourceSearchProfile.getSalaryMax())
+                                .isFresher(sourceSearchProfile.getIsFresher())
+                                .educationLevel(sourceSearchProfile.getEducationLevel())
+                                .build();
+
+                searchProfileRepository.save(targetSearchProfile);
+
+                // Save search profile skills
+                if (migrationData.getSearchProfileSkills() != null
+                                && !migrationData.getSearchProfileSkills().isEmpty()) {
+                        migrationData.getSearchProfileSkills().forEach(spSkill -> {
+                                UserSearchProfileSkill targetSpSkill = UserSearchProfileSkill.builder()
+                                                .id(spSkill.getId())
+                                                .userSearchProfileId(targetSearchProfile.getId())
+                                                .skill(spSkill.getSkill())
+                                                .build();
+                                searchProfileSkillRepository.save(targetSpSkill);
+                        });
+                }
+
+                // Save search profile job titles
+                if (migrationData.getSearchProfileJobTitles() != null
+                                && !migrationData.getSearchProfileJobTitles().isEmpty()) {
+                        migrationData.getSearchProfileJobTitles().forEach(spTitle -> {
+                                UserSearchProfileJobTitle targetSpTitle = UserSearchProfileJobTitle.builder()
+                                                .id(spTitle.getId())
+                                                .userSearchProfileId(targetSearchProfile.getId())
+                                                .jobTitle(spTitle.getJobTitle())
+                                                .build();
+                                searchProfileJobTitleRepository.save(targetSpTitle);
+                        });
+                }
+
+                // Save search profile employment types
+                if (migrationData.getSearchProfileEmployments() != null
+                                && !migrationData.getSearchProfileEmployments().isEmpty()) {
+                        migrationData.getSearchProfileEmployments().forEach(spEmployment -> {
+                                UserSearchProfileEmploymentStatus targetSpEmployment = UserSearchProfileEmploymentStatus
+                                                .builder()
+                                                .id(spEmployment.getId())
+                                                .userSearchProfileId(targetSearchProfile.getId())
+                                                .employmentType(spEmployment.getEmploymentType())
+                                                .build();
+                                searchProfileEmploymentRepository.save(targetSpEmployment);
+                        });
+                }
+
+                log.info("Successfully saved search profile {} for user {}",
+                                targetSearchProfile.getId(), targetUser.getId());
         }
 
         private void cleanUpSourceShard(UUID userId, String sourceShardId) {
@@ -208,74 +307,23 @@ public class UserMigrationService {
                 ShardContext.setShardKey(sourceShardId);
                 try {
                         transactionTemplate.executeWithoutResult(status -> {
+                                // Delete search profile and related data first
+                                UserSearchProfile searchProfile = searchProfileRepository.findByUserId(userId)
+                                                .orElse(null);
+                                if (searchProfile != null) {
+                                        searchProfileRepository.delete(searchProfile);
+                                        log.debug("Search profile and related data deleted for user: {}", userId);
+                                }
+
+                                // Delete user (cascades delete related entities if configured)
                                 userRepository.deleteById(userId);
                                 log.info("Removed user {} from source shard {}", userId, sourceShardId);
                         });
                 } catch (Exception e) {
                         log.error("Failed cleanup on source shard {}: {}", sourceShardId, e.getMessage());
+                        throw new RuntimeException("Cleanup failed", e);
                 } finally {
                         ShardContext.clear();
                 }
-        }
-
-        private UserDto mapToDto(User user) {
-                UserDto dto = UserDto.builder()
-                                .id(user.getId())
-                                .email(user.getEmail())
-                                .firstName(user.getFirstName())
-                                .lastName(user.getLastName())
-                                .phone(user.getPhone())
-                                .address(user.getAddress())
-                                .city(user.getCity())
-                                .objectiveSummary(user.getObjectiveSummary())
-                                .avatarUrl(user.getAvatarUrl())
-                                .isPremium(user.isPremium())
-                                .education(new ArrayList<>())
-                                .workExperience(new ArrayList<>())
-                                .portfolioItems(new ArrayList<>())
-                                .skills(new ArrayList<>())
-                                .build();
-
-                if (user.getEducation() != null) {
-                        user.getEducation().forEach(e -> dto.getEducation()
-                                        .add(com.team.ja.user.dto.request.UserEducationDto.builder()
-                                                        .id(e.getId()).institution(e.getInstitution())
-                                                        .educationLevel(e.getEducationLevel())
-                                                        .fieldOfStudy(e.getFieldOfStudy()).degree(e.getDegree())
-                                                        .gpa(e.getGpa())
-                                                        .startAt(e.getStartAt()).endAt(e.getEndAt()).build()));
-                }
-
-                if (user.getWorkExperience() != null) {
-                        user.getWorkExperience().forEach(w -> {
-                                String code = "";
-                                if (w.getCountryId() != null) {
-                                        code = countryRepository.findById(w.getCountryId())
-                                                        .map(Country::getAbbreviation)
-                                                        .orElse("");
-                                }
-                                dto.getWorkExperience().add(UserWorkExperienceDto.builder()
-                                                .id(w.getId()).jobTitle(w.getJobTitle()).companyName(w.getCompanyName())
-                                                .employmentType(w.getEmploymentType()).countryAbbreviation(code)
-                                                .startAt(w.getStartAt()).endAt(w.getEndAt()).isCurrent(w.isCurrent())
-                                                .description(w.getDescription()).build());
-                        });
-                }
-
-                if (user.getUserSkills() != null) {
-                        user.getUserSkills().forEach(us -> {
-                                dto.getSkills().add(new com.team.ja.user.dto.request.UserSkillDto(
-                                                us.getSkill().getNormalizedName()));
-                        });
-                }
-
-                if (user.getPortfolioItems() != null) {
-                        user.getPortfolioItems().forEach(p -> dto.getPortfolioItems()
-                                        .add(com.team.ja.user.dto.request.UserPortfolioItemDto.builder()
-                                                        .id(p.getId()).fileUrl(p.getFileUrl())
-                                                        .description(p.getDescription())
-                                                        .mediaType(p.getMediaType()).build()));
-                }
-                return dto;
         }
 }

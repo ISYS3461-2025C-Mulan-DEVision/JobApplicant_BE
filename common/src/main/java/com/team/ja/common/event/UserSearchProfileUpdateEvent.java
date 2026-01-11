@@ -48,6 +48,9 @@ public class UserSearchProfileUpdateEvent {
     @Schema(description = "Maximum salary preference of the user", example = "100000")
     private BigDecimal maxSalary;
 
+    @Schema(description = "Is Fresher flag for the user")
+    private Boolean isFresher;
+
     // Not required but also useful
     @Schema(description = "List of job titles associated with the user")
     private List<String> jobTitles;

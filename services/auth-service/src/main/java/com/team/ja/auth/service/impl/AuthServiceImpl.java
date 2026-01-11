@@ -1,11 +1,15 @@
 package com.team.ja.auth.service.impl;
 
+import com.team.ja.auth.dto.request.ChangePasswordRequest;
+import com.team.ja.auth.dto.request.ForgotPasswordRequest;
 import com.team.ja.auth.dto.request.LoginRequest;
 import com.team.ja.auth.dto.request.RefreshTokenRequest;
 import com.team.ja.auth.dto.request.RegisterRequest;
+import com.team.ja.auth.dto.request.ResetPasswordRequest;
 import com.team.ja.auth.dto.response.AuthResponse;
 import com.team.ja.auth.kafka.UserRegisteredProducer;
 import com.team.ja.auth.model.AuthCredential;
+import com.team.ja.auth.model.TokenType;
 import com.team.ja.auth.model.VerificationToken;
 import com.team.ja.auth.repository.AuthCredentialRepository;
 import com.team.ja.auth.repository.VerificationTokenRepository;
@@ -361,6 +365,155 @@ public class AuthServiceImpl implements AuthService {
         } catch (Exception e) {
             log.warn("Could not blacklist token: {}", e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        log.info("Changing password for user: {}", email);
+
+        // Find credential
+        AuthCredential credential = authCredentialRepository
+            .findByEmail(email)
+            .orElseThrow(() ->
+                new NotFoundException("User not found with email: " + email)
+            );
+
+        // Check if account is active
+        if (!credential.isActive()) {
+            throw new UnauthorizedException(
+                "Account is not active. Please verify your email."
+            );
+        }
+
+        // Check if account is locked
+        if (!credential.isAccountNonLocked()) {
+            throw new UnauthorizedException(
+                "Account is locked. Please try again later."
+            );
+        }
+
+        // Check auth provider - OAuth users shouldn't change password
+        if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+            throw new BadRequestException(
+                "Password change is not available for " + credential.getAuthProvider() + " accounts."
+            );
+        }
+
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), credential.getPasswordHash())) {
+            log.warn("Password change failed: invalid current password for {}", email);
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+
+        // Check if new password is different from current password
+        if (passwordEncoder.matches(request.getNewPassword(), credential.getPasswordHash())) {
+            throw new BadRequestException(
+                "New password must be different from current password"
+            );
+        }
+
+        // Update password
+        credential.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        authCredentialRepository.save(credential);
+
+        log.info("Password changed successfully for user: {}", email);
+
+        // Optionally: Send email notification about password change
+        // emailService.sendPasswordChangeNotification(credential);
+    }
+
+    @Override
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        log.info("Forgot password request for email: {}", request.getEmail());
+
+        // Find credential by email - don't reveal if email exists or not for security
+        authCredentialRepository
+            .findByEmail(request.getEmail())
+            .ifPresent(credential -> {
+                // Only allow password reset for LOCAL accounts
+                if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+                    log.info("Skipping password reset for non-LOCAL account: {}", request.getEmail());
+                    return;
+                }
+
+                // Delete any existing password reset tokens for this user (keep activation tokens)
+                verificationTokenRepository.deleteByCredentialAndTokenType(credential, TokenType.PASSWORD_RESET);
+
+                // Generate password reset token
+                String token = UUID.randomUUID().toString();
+                VerificationToken resetToken = VerificationToken.builder()
+                    .token(token)
+                    .tokenType(TokenType.PASSWORD_RESET)
+                    .credential(credential)
+                    .expiryDate(LocalDateTime.now().plusHours(1)) // Token valid for 1 hour
+                    .build();
+                verificationTokenRepository.save(resetToken);
+                log.info("Generated password reset token for {}", request.getEmail());
+
+                // Send password reset email
+                emailService.sendPasswordResetEmail(credential, token);
+            });
+
+        // Always return success to prevent email enumeration attacks
+        log.info("Forgot password flow completed for: {}", request.getEmail());
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        log.info("Password reset attempt with token");
+
+        // Find token
+        VerificationToken verificationToken = verificationTokenRepository
+            .findByToken(request.getToken())
+            .orElseThrow(() ->
+                new NotFoundException("Invalid or expired password reset token")
+            );
+
+        // Check token type
+        if (verificationToken.getTokenType() != TokenType.PASSWORD_RESET) {
+            throw new BadRequestException("Invalid token type");
+        }
+
+        // Check if token is expired
+        if (verificationToken.isExpired()) {
+            verificationTokenRepository.delete(verificationToken);
+            throw new BadRequestException("Password reset token has expired. Please request a new one.");
+        }
+
+        AuthCredential credential = verificationToken.getCredential();
+
+        // Check if account is active
+        if (!credential.isActive()) {
+            throw new BadRequestException(
+                "Account is not active. Please verify your email first."
+            );
+        }
+
+        // Check auth provider - OAuth users shouldn't reset password
+        if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+            throw new BadRequestException(
+                "Password reset is not available for " + credential.getAuthProvider() + " accounts."
+            );
+        }
+
+        // Check if new password is same as current password
+        if (passwordEncoder.matches(request.getNewPassword(), credential.getPasswordHash())) {
+            throw new BadRequestException(
+                "New password must be different from current password"
+            );
+        }
+
+        // Update password
+        credential.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        authCredentialRepository.save(credential);
+
+        // Delete the used reset token
+        verificationTokenRepository.delete(verificationToken);
+
+        log.info("Password reset successfully for user: {}", credential.getEmail());
     }
 
     private AuthResponse generateAuthResponse(AuthCredential credential) {

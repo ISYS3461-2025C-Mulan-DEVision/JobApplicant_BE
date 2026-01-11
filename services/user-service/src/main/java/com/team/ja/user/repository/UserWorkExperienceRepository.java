@@ -38,5 +38,6 @@ public interface UserWorkExperienceRepository extends JpaRepository<UserWorkExpe
      * Find current job (isCurrent = true) for a user.
      */
     Optional<UserWorkExperience> findByUserIdAndIsCurrentTrueAndIsActiveTrue(UUID userId);
-}
 
+    List<UserWorkExperience> findByUserId(UUID userId);
+}

@@ -67,13 +67,6 @@ public final class KafkaTopics {
     public static final String USER_MIGRATION = "user-migration";
 
     /**
-     * Topic for user search profile update events.
-     * Producer: user-service
-     * Consumer: subscription-service
-     */
-    public static final String USER_SEARCH_PROFILE_UPDATED = "user-search-profile-updated";
-
-    /**
      * Topic for payment success response.
      * Producer: jm-payment-service
      * Consumer: subscription-service
@@ -126,7 +119,14 @@ public final class KafkaTopics {
 
     public static final String JOB_POST_PUBLISHED = "jobpost.published";
 
-    public static final String JOB_POST_SKILL_CHANGE = "jobpost.skill.change";
+    public static final String JOB_POST_SKILL_CHANGE = "jobpost.skills.changed";
 
-    public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.change";
+    public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.changed";
+
+    /**
+     * Topic for job matched events.
+     * Producer: user-service (when job matches search profile)
+     * Consumer: notification-service (to send notifications)
+     */
+    public static final String JOB_MATCHED = "job-matched";
 }

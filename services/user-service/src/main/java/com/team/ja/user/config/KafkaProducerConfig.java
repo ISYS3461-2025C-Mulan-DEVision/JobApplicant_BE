@@ -1,5 +1,6 @@
 package com.team.ja.user.config;
 
+import com.team.ja.common.event.JobMatchedEvent;
 import com.team.ja.common.event.SkillCreateEvent;
 import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.common.event.UserProfileCreateEvent;
@@ -107,5 +108,21 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaTemplate<String, UserSearchProfileUpdateEvent> userProfileUpdatedEventKafkaTemplate() {
         return new KafkaTemplate<>(userProfileUpdatedEventProducerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, JobMatchedEvent> jobMatchedEventProducerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        configProps.put(ProducerConfig.ACKS_CONFIG, "all");
+        configProps.put(ProducerConfig.RETRIES_CONFIG, 3);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+
+    @Bean
+    public KafkaTemplate<String, JobMatchedEvent> jobMatchedEventKafkaTemplate() {
+        return new KafkaTemplate<>(jobMatchedEventProducerFactory());
     }
 }
