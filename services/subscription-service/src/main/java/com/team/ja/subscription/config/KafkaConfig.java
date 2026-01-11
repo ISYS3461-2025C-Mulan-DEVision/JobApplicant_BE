@@ -15,22 +15,20 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.KafkaMessageListenerContainer;
-import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.util.backoff.FixedBackOff;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Kafka consumer configuration for user-service.
+ * Kafka consumer configuration for subscription-service.
  */
 @Configuration
 @EnableKafka
@@ -58,54 +56,9 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        // Add error handler with backoff: 2 seconds interval, max 3 retries
+        factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(2000L, 3)));
         return factory;
-    }
-
-    /**
-     * Generic consumer factory for Object type messages.
-     * 
-     * @return
-     */
-    @Bean
-    public ConsumerFactory<String, Object> genericConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        return new DefaultKafkaConsumerFactory<>(configProps);
-    }
-
-    /**
-     * Reply container for handling replies from Kafka.
-     * 
-     * @param genericConsumerFactory
-     * @return
-     */
-    @Bean
-    public KafkaMessageListenerContainer<String, Object> replyContainer(
-            ConsumerFactory<String, Object> genericConsumerFactory) {
-        ContainerProperties containerProperties = new ContainerProperties("reply-topic");
-        return new KafkaMessageListenerContainer<>(genericConsumerFactory, containerProperties);
-    }
-
-    /**
-     * Replying Kafka template for request-reply semantics.
-     * 
-     * @param producerFactory
-     * @param replyContainer
-     * @return
-     */
-    @Bean
-    public ReplyingKafkaTemplate<String, Object, Object> replyingKafkaTemplate(
-            ProducerFactory<String, Object> producerFactory,
-            KafkaMessageListenerContainer<String, Object> replyContainer) {
-        ReplyingKafkaTemplate<String, Object, Object> replyingKafkaTemplate = new ReplyingKafkaTemplate<>(
-                producerFactory, replyContainer);
-        replyingKafkaTemplate.setDefaultReplyTimeout(Duration.ofSeconds(10));
-        return replyingKafkaTemplate;
     }
 
     /**
