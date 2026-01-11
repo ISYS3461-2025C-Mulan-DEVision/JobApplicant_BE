@@ -14,7 +14,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface VerificationTokenRepository
-    extends JpaRepository<VerificationToken, UUID> {
+        extends JpaRepository<VerificationToken, UUID> {
     Optional<VerificationToken> findByToken(String token);
 
     Optional<VerificationToken> findByTokenAndTokenType(String token, TokenType tokenType);
@@ -22,8 +22,10 @@ public interface VerificationTokenRepository
     void deleteByToken(String token);
 
     void deleteByExpiryDateBefore(LocalDateTime cutoff);
-    
+
     void deleteByCredential(AuthCredential credential);
 
     void deleteByCredentialAndTokenType(AuthCredential credential, TokenType tokenType);
+
+    Optional<VerificationToken> findByCredentialAndTokenType(AuthCredential credential, TokenType tokenType);
 }

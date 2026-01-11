@@ -67,56 +67,51 @@ public class AuthServiceImpl implements AuthService {
         // Check if email already exists
         if (authCredentialRepository.existsByEmail(request.getEmail())) {
             throw new ConflictException(
-                "Email already registered: " + request.getEmail()
-            );
+                    "Email already registered: " + request.getEmail());
         }
 
         // Create auth credential (inactive and unverified initially)
         AuthCredential credential = AuthCredential.builder()
-            .email(request.getEmail())
-            .passwordHash(passwordEncoder.encode(request.getPassword()))
-            .role(Role.FREE)
-            .isActive(false) // Account is inactive until email is verified
-            .emailVerified(false) // Email not verified yet
-            .build();
+                .email(request.getEmail())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(Role.FREE)
+                .isActive(false) // Account is inactive until email is verified
+                .emailVerified(false) // Email not verified yet
+                .build();
 
         AuthCredential savedCredential = authCredentialRepository.save(
-            credential
-        );
+                credential);
         savedCredential.setUserId(savedCredential.getId()); // Align userId with primary key
         authCredentialRepository.save(savedCredential);
         log.info(
-            "Created inactive auth credential for: {}",
-            request.getEmail()
-        );
+                "Created inactive auth credential for: {}",
+                request.getEmail());
 
         // Generate and save verification token
         String token = UUID.randomUUID().toString();
         VerificationToken verificationToken = VerificationToken.builder()
-            .token(token)
-            .credential(savedCredential)
-            .firstName(request.getFirstName())
-            .lastName(request.getLastName())
-            .countryAbbreviation(request.getCountry())
-            .phone(request.getPhone())
-            .address(request.getAddress())
-            .city(request.getCity())
-            .expiryDate(LocalDateTime.now().plusHours(24)) // Token valid for 24 hours
-            .build();
+                .token(token)
+                .credential(savedCredential)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .countryAbbreviation(request.getCountry())
+                .phone(request.getPhone())
+                .address(request.getAddress())
+                .city(request.getCity())
+                .expiryDate(LocalDateTime.now().plusHours(24)) // Token valid for 24 hours
+                .build();
         verificationTokenRepository.save(verificationToken);
         log.info(
-            "Generated verification token for {}: {}",
-            request.getEmail(),
-            token
-        );
+                "Generated verification token for {}: {}",
+                request.getEmail(),
+                token);
 
         // Send activation email
         emailService.sendActivationEmail(savedCredential, token);
 
         log.info(
-            "User registration initiated. Activation email sent to: {}",
-            request.getEmail()
-        );
+                "User registration initiated. Activation email sent to: {}",
+                request.getEmail());
     }
 
     @Override
@@ -125,10 +120,8 @@ public class AuthServiceImpl implements AuthService {
         log.info("Activating account with token: {}", token);
 
         VerificationToken verificationToken = verificationTokenRepository
-            .findByToken(token)
-            .orElseThrow(() ->
-                new NotFoundException("Invalid activation token")
-            );
+                .findByToken(token)
+                .orElseThrow(() -> new NotFoundException("Invalid activation token"));
 
         if (verificationToken.isExpired()) {
             verificationTokenRepository.delete(verificationToken); // Clean up expired token
@@ -141,9 +134,8 @@ public class AuthServiceImpl implements AuthService {
             // Account already active, clean up token
             verificationTokenRepository.delete(verificationToken);
             log.warn(
-                "Account for {} is already active.",
-                credential.getEmail()
-            );
+                    "Account for {} is already active.",
+                    credential.getEmail());
             // Proceed to log in the user if token was valid but account already active
             return generateAuthResponse(credential);
         }
@@ -151,31 +143,28 @@ public class AuthServiceImpl implements AuthService {
         credential.activate(); // Set isActive to true
         credential.setEmailVerified(true);
         AuthCredential activatedCredential = authCredentialRepository.save(
-            credential
-        );
+                credential);
         log.info(
-            "Account activated for: {} with name {} {}",
-            activatedCredential.getEmail(),
-            verificationToken.getFirstName(),
-            verificationToken.getLastName()
-        );
+                "Account activated for: {} with name {} {}",
+                activatedCredential.getEmail(),
+                verificationToken.getFirstName(),
+                verificationToken.getLastName());
 
         // Publish Kafka event for user-service to create user profile NOW
         UserRegisteredEvent event = UserRegisteredEvent.builder()
-            .userId(activatedCredential.getId())
-            .email(activatedCredential.getEmail())
-            .firstName(verificationToken.getFirstName())
-            .lastName(verificationToken.getLastName())
-            .countryAbbreviation(verificationToken.getCountryAbbreviation())
-            .phone(verificationToken.getPhone())
-            .address(verificationToken.getAddress())
-            .city(verificationToken.getCity())
-            .build();
+                .userId(activatedCredential.getId())
+                .email(activatedCredential.getEmail())
+                .firstName(verificationToken.getFirstName())
+                .lastName(verificationToken.getLastName())
+                .countryAbbreviation(verificationToken.getCountryAbbreviation())
+                .phone(verificationToken.getPhone())
+                .address(verificationToken.getAddress())
+                .city(verificationToken.getCity())
+                .build();
         userRegisteredProducer.sendUserRegisteredEvent(event);
         log.info(
-            "UserRegisteredEvent published for userId: {}",
-            activatedCredential.getId()
-        );
+                "UserRegisteredEvent published for userId: {}",
+                activatedCredential.getId());
 
         // Delete the used verification token
         verificationTokenRepository.delete(verificationToken);
@@ -191,28 +180,42 @@ public class AuthServiceImpl implements AuthService {
         log.info("Resending activation email for: {}", email);
 
         AuthCredential credential = authCredentialRepository
-            .findByEmail(email)
-            .orElseThrow(() ->
-                new NotFoundException("No account registered with this email")
-            );
+                .findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("No account registered with this email"));
 
         if (credential.isActive() && credential.isEmailVerified()) {
             log.info("Account already active for {}. Skipping resend.", email);
             return;
         }
 
+        // PRESERVE old token data before deleting (fixes issue where optional fields
+        // were lost)
+        VerificationToken oldToken = verificationTokenRepository
+                .findByCredentialAndTokenType(credential, TokenType.ACTIVATION)
+                .orElse(null);
+
         // Invalidate all old tokens for this user before creating a new one
         verificationTokenRepository.deleteByCredential(credential);
         log.info("Invalidated old verification tokens for {}", email);
 
-        // Generate and save a new verification token
+        // Generate and save a new verification token WITH preserved data
         String token = UUID.randomUUID().toString();
-        VerificationToken verificationToken = VerificationToken.builder()
-            .token(token)
-            .credential(credential)
-            .expiryDate(LocalDateTime.now().plusHours(24)) // Token valid for 24 hours
-            .build();
-        verificationTokenRepository.save(verificationToken);
+        VerificationToken.VerificationTokenBuilder builder = VerificationToken.builder()
+                .token(token)
+                .credential(credential)
+                .expiryDate(LocalDateTime.now().plusHours(24)); // Token valid for 24 hours
+
+        // Preserve optional fields from old token if it existed
+        if (oldToken != null) {
+            builder.firstName(oldToken.getFirstName())
+                    .lastName(oldToken.getLastName())
+                    .countryAbbreviation(oldToken.getCountryAbbreviation())
+                    .phone(oldToken.getPhone())
+                    .address(oldToken.getAddress())
+                    .city(oldToken.getCity());
+        }
+
+        verificationTokenRepository.save(builder.build());
         log.info("Generated new verification token for {}: {}", email, token);
 
         // Send activation email
@@ -227,53 +230,47 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login attempt for: {}", request.getEmail());
 
         AuthCredential credential = authCredentialRepository
-            .findByEmail(request.getEmail())
-            .orElseThrow(() ->
-                new UnauthorizedException("Invalid email or password")
-            );
+                .findByEmail(request.getEmail())
+                .orElseThrow(() -> new UnauthorizedException("Invalid email or password"));
 
         // Check if account is active (email verified)
         if (!credential.isActive()) {
             throw new UnauthorizedException(
-                "Account is not active. Please verify your email."
-            );
+                    "Account is not active. Please verify your email.");
         }
 
         // Check if account is locked
         if (!credential.isAccountNonLocked()) {
             throw new UnauthorizedException(
-                "Account is locked. Please try again later."
-            );
+                    "Account is locked. Please try again later.");
         }
 
         // Check auth provider
         if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
             throw new com.team.ja.common.exception.BadRequestException(
-                "This account is registered via " + credential.getAuthProvider() + ". Please login using that provider."
-            );
+                    "This account is registered via " + credential.getAuthProvider()
+                            + ". Please login using that provider.");
         }
 
         try {
             // Authenticate user
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                    request.getEmail(),
-                    request.getPassword()
-                )
-            );
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()));
         } catch (BadCredentialsException e) {
             // Record failed attempt in Redis for the 60s window
             int windowAttempts = loginAttemptService.incrementAttempts(request.getEmail());
-            
+
             // Record failed attempt persistently in DB
             credential.recordFailedLogin();
-            
+
             // If window-based attempts exceed limit, force persistent lock
             if (windowAttempts >= 5) {
                 log.warn("Account {} locked due to too many failed attempts in a short window.", request.getEmail());
                 credential.setLockedUntil(LocalDateTime.now().plusMinutes(15));
             }
-            
+
             authCredentialRepository.save(credential);
             throw new UnauthorizedException("Invalid email or password");
         }
@@ -281,7 +278,7 @@ public class AuthServiceImpl implements AuthService {
         // Record successful login
         credential.recordSuccessfulLogin();
         authCredentialRepository.save(credential);
-        
+
         // Reset window counter on success
         loginAttemptService.resetAttempts(request.getEmail());
 
@@ -307,10 +304,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Get credential
         AuthCredential credential = authCredentialRepository
-            .findByEmailAndIsActiveTrue(email)
-            .orElseThrow(() ->
-                new UnauthorizedException("User not found or inactive")
-            );
+                .findByEmailAndIsActiveTrue(email)
+                .orElseThrow(() -> new UnauthorizedException("User not found or inactive"));
 
         // Validate token
         if (!jwtService.isTokenValid(refreshToken, credential)) {
@@ -319,21 +314,20 @@ public class AuthServiceImpl implements AuthService {
 
         // Generate new access token
         String newAccessToken = jwtService.generateAccessToken(
-            credential,
-            credential.getId(),
-            credential.getRole().name()
-        );
+                credential,
+                credential.getId(),
+                credential.getRole().name());
 
         log.info("Access token refreshed for: {}", email);
 
         return AuthResponse.builder()
-            .accessToken(newAccessToken)
-            .refreshToken(refreshToken) // Return same refresh token
-            .expiresIn(accessTokenExpiration / 1000)
-            .userId(credential.getId())
-            .email(credential.getEmail())
-            .role(credential.getRole().name())
-            .build();
+                .accessToken(newAccessToken)
+                .refreshToken(refreshToken) // Return same refresh token
+                .expiresIn(accessTokenExpiration / 1000)
+                .userId(credential.getId())
+                .email(credential.getEmail())
+                .role(credential.getRole().name())
+                .build();
     }
 
     @Override
@@ -341,11 +335,9 @@ public class AuthServiceImpl implements AuthService {
         try {
             String email = jwtService.extractUsername(token);
             AuthCredential credential = authCredentialRepository
-                .findByEmailAndIsActiveTrue(email)
-                .orElse(null);
-            return (
-                credential != null && jwtService.isTokenValid(token, credential)
-            );
+                    .findByEmailAndIsActiveTrue(email)
+                    .orElse(null);
+            return (credential != null && jwtService.isTokenValid(token, credential));
         } catch (Exception e) {
             log.warn("Token validation failed: {}", e.getMessage());
             return false;
@@ -374,30 +366,25 @@ public class AuthServiceImpl implements AuthService {
 
         // Find credential
         AuthCredential credential = authCredentialRepository
-            .findByEmail(email)
-            .orElseThrow(() ->
-                new NotFoundException("User not found with email: " + email)
-            );
+                .findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
 
         // Check if account is active
         if (!credential.isActive()) {
             throw new UnauthorizedException(
-                "Account is not active. Please verify your email."
-            );
+                    "Account is not active. Please verify your email.");
         }
 
         // Check if account is locked
         if (!credential.isAccountNonLocked()) {
             throw new UnauthorizedException(
-                "Account is locked. Please try again later."
-            );
+                    "Account is locked. Please try again later.");
         }
 
         // Check auth provider - OAuth users shouldn't change password
         if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
             throw new BadRequestException(
-                "Password change is not available for " + credential.getAuthProvider() + " accounts."
-            );
+                    "Password change is not available for " + credential.getAuthProvider() + " accounts.");
         }
 
         // Verify current password
@@ -409,8 +396,7 @@ public class AuthServiceImpl implements AuthService {
         // Check if new password is different from current password
         if (passwordEncoder.matches(request.getNewPassword(), credential.getPasswordHash())) {
             throw new BadRequestException(
-                "New password must be different from current password"
-            );
+                    "New password must be different from current password");
         }
 
         // Update password
@@ -430,31 +416,32 @@ public class AuthServiceImpl implements AuthService {
 
         // Find credential by email - don't reveal if email exists or not for security
         authCredentialRepository
-            .findByEmail(request.getEmail())
-            .ifPresent(credential -> {
-                // Only allow password reset for LOCAL accounts
-                if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
-                    log.info("Skipping password reset for non-LOCAL account: {}", request.getEmail());
-                    return;
-                }
+                .findByEmail(request.getEmail())
+                .ifPresent(credential -> {
+                    // Only allow password reset for LOCAL accounts
+                    if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
+                        log.info("Skipping password reset for non-LOCAL account: {}", request.getEmail());
+                        return;
+                    }
 
-                // Delete any existing password reset tokens for this user (keep activation tokens)
-                verificationTokenRepository.deleteByCredentialAndTokenType(credential, TokenType.PASSWORD_RESET);
+                    // Delete any existing password reset tokens for this user (keep activation
+                    // tokens)
+                    verificationTokenRepository.deleteByCredentialAndTokenType(credential, TokenType.PASSWORD_RESET);
 
-                // Generate password reset token
-                String token = UUID.randomUUID().toString();
-                VerificationToken resetToken = VerificationToken.builder()
-                    .token(token)
-                    .tokenType(TokenType.PASSWORD_RESET)
-                    .credential(credential)
-                    .expiryDate(LocalDateTime.now().plusHours(1)) // Token valid for 1 hour
-                    .build();
-                verificationTokenRepository.save(resetToken);
-                log.info("Generated password reset token for {}", request.getEmail());
+                    // Generate password reset token
+                    String token = UUID.randomUUID().toString();
+                    VerificationToken resetToken = VerificationToken.builder()
+                            .token(token)
+                            .tokenType(TokenType.PASSWORD_RESET)
+                            .credential(credential)
+                            .expiryDate(LocalDateTime.now().plusHours(1)) // Token valid for 1 hour
+                            .build();
+                    verificationTokenRepository.save(resetToken);
+                    log.info("Generated password reset token for {}", request.getEmail());
 
-                // Send password reset email
-                emailService.sendPasswordResetEmail(credential, token);
-            });
+                    // Send password reset email
+                    emailService.sendPasswordResetEmail(credential, token);
+                });
 
         // Always return success to prevent email enumeration attacks
         log.info("Forgot password flow completed for: {}", request.getEmail());
@@ -467,10 +454,8 @@ public class AuthServiceImpl implements AuthService {
 
         // Find token
         VerificationToken verificationToken = verificationTokenRepository
-            .findByToken(request.getToken())
-            .orElseThrow(() ->
-                new NotFoundException("Invalid or expired password reset token")
-            );
+                .findByToken(request.getToken())
+                .orElseThrow(() -> new NotFoundException("Invalid or expired password reset token"));
 
         // Check token type
         if (verificationToken.getTokenType() != TokenType.PASSWORD_RESET) {
@@ -488,22 +473,19 @@ public class AuthServiceImpl implements AuthService {
         // Check if account is active
         if (!credential.isActive()) {
             throw new BadRequestException(
-                "Account is not active. Please verify your email first."
-            );
+                    "Account is not active. Please verify your email first.");
         }
 
         // Check auth provider - OAuth users shouldn't reset password
         if (credential.getAuthProvider() != com.team.ja.common.enumeration.AuthProvider.LOCAL) {
             throw new BadRequestException(
-                "Password reset is not available for " + credential.getAuthProvider() + " accounts."
-            );
+                    "Password reset is not available for " + credential.getAuthProvider() + " accounts.");
         }
 
         // Check if new password is same as current password
         if (passwordEncoder.matches(request.getNewPassword(), credential.getPasswordHash())) {
             throw new BadRequestException(
-                "New password must be different from current password"
-            );
+                    "New password must be different from current password");
         }
 
         // Update password
@@ -518,19 +500,18 @@ public class AuthServiceImpl implements AuthService {
 
     private AuthResponse generateAuthResponse(AuthCredential credential) {
         String accessToken = jwtService.generateAccessToken(
-            credential,
-            credential.getId(),
-            credential.getRole().name()
-        );
+                credential,
+                credential.getId(),
+                credential.getRole().name());
         String refreshToken = jwtService.generateRefreshToken(credential);
 
         return AuthResponse.builder()
-            .accessToken(accessToken)
-            .refreshToken(refreshToken)
-            .expiresIn(accessTokenExpiration / 1000)
-            .userId(credential.getId())
-            .email(credential.getEmail())
-            .role(credential.getRole().name())
-            .build();
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(accessTokenExpiration / 1000)
+                .userId(credential.getId())
+                .email(credential.getEmail())
+                .role(credential.getRole().name())
+                .build();
     }
 }
