@@ -100,5 +100,13 @@ public interface NotificationService {
      * @param jobPostId     the job post ID
      */
     void createApplicationSubmittedNotification(UUID userId, UUID applicationId, String jobPostId);
+
+    /**
+     * Create a welcome notification for a new user.
+     *
+     * @param userId    the user ID
+     * @param firstName the user's first name for personalization
+     */
+    void createWelcomeNotification(UUID userId, String firstName);
 }
 

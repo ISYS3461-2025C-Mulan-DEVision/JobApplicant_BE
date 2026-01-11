@@ -1,7 +1,6 @@
 package com.team.ja.notification.kafka;
 
 import com.team.ja.common.event.ApplicationCreatedEvent;
-import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +9,7 @@ import org.springframework.stereotype.Service;
 
 /**
  * Kafka consumer for application-related events.
- * Listens to APPLICATION_SUBMITTED topic and creates notifications.
+ * Listens to application-created-events topic (published by application-service).
  */
 @Slf4j
 @Service
@@ -20,13 +19,18 @@ public class ApplicationEventConsumer {
     private final NotificationService notificationService;
 
     /**
+     * Topic name matching what application-service publishes to.
+     */
+    private static final String APPLICATION_CREATED_TOPIC = "application-created-events";
+
+    /**
      * Handle application created events.
      * Creates a notification for the user when their application is submitted.
      *
      * @param event the application created event from application-service
      */
     @KafkaListener(
-            topics = KafkaTopics.APPLICATION_SUBMITTED,
+            topics = APPLICATION_CREATED_TOPIC,
             groupId = "${spring.kafka.consumer.group-id}",
             containerFactory = "applicationCreatedKafkaListenerContainerFactory"
     )

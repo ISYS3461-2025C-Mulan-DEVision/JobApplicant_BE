@@ -4,6 +4,7 @@ import com.team.ja.common.event.ApplicationCreatedEvent;
 import com.team.ja.common.event.JobPostMatchEvent;
 import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.common.event.SubscriptionDeactivateEvent;
+import com.team.ja.common.event.UserRegisteredEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -138,6 +139,28 @@ public class KafkaConfig {
     public ConcurrentKafkaListenerContainerFactory<String, SubscriptionDeactivateEvent> subscriptionDeactivateKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, SubscriptionDeactivateEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(subscriptionDeactivateConsumerFactory());
+        return factory;
+    }
+
+    /**
+     * Consumer factory for UserRegisteredEvent.
+     */
+    @Bean
+    public ConsumerFactory<String, UserRegisteredEvent> userRegisteredConsumerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(configProps);
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> userRegisteredKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(userRegisteredConsumerFactory());
         return factory;
     }
 }

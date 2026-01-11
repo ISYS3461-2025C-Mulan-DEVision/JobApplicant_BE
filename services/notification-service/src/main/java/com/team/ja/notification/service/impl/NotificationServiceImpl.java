@@ -154,6 +154,26 @@ public class NotificationServiceImpl implements NotificationService {
         createNotification(request);
     }
 
+    @Override
+    @Transactional
+    public void createWelcomeNotification(UUID userId, String firstName) {
+        log.info("Creating welcome notification for user: {}", userId);
+
+        String personalizedMessage = String.format(
+                "Hi %s! Welcome to DEVision. Start exploring job opportunities that match your skills and career goals.",
+                firstName
+        );
+
+        CreateNotificationRequest request = CreateNotificationRequest.builder()
+                .userId(userId)
+                .notificationType(NotificationType.WELCOME)
+                .title("Welcome to DEVision!")
+                .message(personalizedMessage)
+                .build();
+
+        createNotification(request);
+    }
+
     /**
      * Map Notification entity to NotificationResponse DTO.
      */
