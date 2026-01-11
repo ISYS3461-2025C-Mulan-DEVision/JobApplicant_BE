@@ -2,9 +2,13 @@ package com.team.ja.admin.api;
 
 import com.team.ja.admin.client.ApplicationClient;
 import com.team.ja.admin.client.JobManagerClient;
+import com.team.ja.admin.client.JobPostAdminClient;
 import com.team.ja.admin.client.UserClient;
 import com.team.ja.common.dto.ApiResponse;
 import com.team.ja.common.dto.PageResponse;
+import com.team.ja.common.dto.jobmanager.JobManagerPageResponse;
+import com.team.ja.common.dto.jobmanager.JobPostDto;
+import com.team.ja.common.dto.jobmanager.JobSearchRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Builder;
@@ -28,6 +32,7 @@ public class AdminSearchController {
 
     private final UserClient userClient;
     private final JobManagerClient jobManagerClient;
+    private final JobPostAdminClient jobPostAdminClient;
     // private final ApplicationClient applicationClient; // Applications usually
     // searched by filters, not global text
 
@@ -71,7 +76,25 @@ public class AdminSearchController {
 
         CompletableFuture<PageResponse<Object>> jobsFuture = CompletableFuture.supplyAsync(() -> {
             try {
-                return jobManagerClient.searchJobPosts(query, null, 0, 5).getData();
+                // Use the new JobPostAdminClient with search filters (title-based search)
+                JobSearchRequest searchRequest = JobSearchRequest.builder()
+                        .title(query)
+                        .page(0)
+                        .size(5)
+                        .build();
+                
+                JobManagerPageResponse<JobPostDto> response = jobPostAdminClient.searchJobPosts(searchRequest);
+                
+                // Convert JobManagerPageResponse to PageResponse for consistency
+                return PageResponse.<Object>builder()
+                        .content(response.getContent().stream().map(obj -> (Object) obj).toList())
+                        .totalElements(response.getTotalElements())
+                        .totalPages(response.getTotalPages())
+                        .pageNumber(response.getNumber())
+                        .pageSize(response.getSize())
+                        .first(response.isFirst())
+                        .last(response.isLast())
+                        .build();
             } catch (Exception e) {
                 log.error("Error searching job posts", e);
                 return PageResponse.<Object>builder().content(java.util.Collections.emptyList()).build();
