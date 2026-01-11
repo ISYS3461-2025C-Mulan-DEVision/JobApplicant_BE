@@ -1,7 +1,7 @@
 package com.team.ja.notification.config;
 
 import com.team.ja.common.event.ApplicationCreatedEvent;
-import com.team.ja.common.event.JobPostMatchEvent;
+import com.team.ja.common.event.JobMatchedEvent;
 import com.team.ja.common.event.SubscriptionActivateEvent;
 import com.team.ja.common.event.SubscriptionDeactivateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
@@ -58,7 +58,7 @@ public class KafkaConfig {
      * Consumer factory specifically for JobPostMatchEvent.
      */
     @Bean
-    public ConsumerFactory<String, JobPostMatchEvent> jobPostMatchConsumerFactory() {
+    public ConsumerFactory<String, JobMatchedEvent> jobPostMatchConsumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -70,8 +70,8 @@ public class KafkaConfig {
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, JobPostMatchEvent> jobPostMatchKafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, JobPostMatchEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    public ConcurrentKafkaListenerContainerFactory<String, JobMatchedEvent> jobPostMatchKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, JobMatchedEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(jobPostMatchConsumerFactory());
         return factory;
     }
@@ -164,4 +164,3 @@ public class KafkaConfig {
         return factory;
     }
 }
-

@@ -117,10 +117,25 @@ public final class KafkaTopics {
      */
     public static final String USER_PROFILE_UPDATE = "user-profile-update";
 
+    /**
+     * Topic for job post published events.
+     * Producer: jm-service
+     * Consumer: subscription-service
+     */
     public static final String JOB_POST_PUBLISHED = "jobpost.published";
 
+    /**
+     * Topic for job post skill change events.
+     * Producer: jm-service
+     * Consumer: subscription-service
+     */
     public static final String JOB_POST_SKILL_CHANGE = "jobpost.skills.changed";
 
+    /**
+     * Topic for job post country change events.
+     * Producer: jm-service
+     * Consumer: subscription-service
+     */
     public static final String JOB_POST_COUNTRY_CHANGE = "jobpost.country.changed";
 
     /**
