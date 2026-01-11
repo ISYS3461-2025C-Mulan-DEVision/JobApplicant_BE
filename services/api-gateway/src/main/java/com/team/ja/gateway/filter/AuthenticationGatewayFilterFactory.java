@@ -84,14 +84,6 @@ public class AuthenticationGatewayFilterFactory
                         String username = jwtUtil.extractUsername(token);
                         String role = jwtUtil.extractRole(token);
 
-                        // Enforce admin role for admin endpoints
-                        String path = request.getURI().getPath();
-                        if (path.contains("/api/v1/admin/") && !"ADMIN".equals(role)) {
-                            log.warn("User {} with role {} attempted to access admin endpoint", username, role);
-                            return onError(exchange, "Insufficient permissions for admin endpoint",
-                                    HttpStatus.FORBIDDEN);
-                        }
-
                         log.info("Authenticated request from user: {} ({})", username, userId);
 
                         // Forward user info to downstream services
