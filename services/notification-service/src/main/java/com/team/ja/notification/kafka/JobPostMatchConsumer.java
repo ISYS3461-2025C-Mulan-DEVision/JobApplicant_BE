@@ -1,6 +1,6 @@
 package com.team.ja.notification.kafka;
 
-import com.team.ja.common.event.JobPostMatchEvent;
+import com.team.ja.common.event.JobMatchedEvent;
 import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -21,22 +21,19 @@ public class JobPostMatchConsumer {
 
     /**
      * Handle job post match events.
-     * Creates a notification for the user when a job post matches their search profile.
+     * Creates a notification for the user when a job post matches their search
+     * profile.
      *
      * @param event the job post match event from subscription-service
      */
-    @KafkaListener(
-            topics = KafkaTopics.JOB_POSTED_MATCHED,
-            groupId = "${spring.kafka.consumer.group-id}",
-            containerFactory = "jobPostMatchKafkaListenerContainerFactory"
-    )
-    public void handleJobPostMatch(JobPostMatchEvent event) {
+    @KafkaListener(topics = KafkaTopics.JOB_POSTED_MATCHED, groupId = "${spring.kafka.consumer.group-id}", containerFactory = "jobPostMatchKafkaListenerContainerFactory")
+    public void handleJobPostMatch(JobMatchedEvent event) {
         log.info("Received JobPostMatchEvent for user: {} and job post: {}", event.getUserId(), event.getJobPostId());
 
         try {
             notificationService.createJobMatchNotification(
                     event.getUserId(),
-                    event.getJobPostId(),
+                    event.getJobPostId().toString(),
                     null // Job title not available in event, will use generic message
             );
             log.info("Successfully created job match notification for user: {}", event.getUserId());
@@ -47,4 +44,3 @@ public class JobPostMatchConsumer {
         }
     }
 }
-
