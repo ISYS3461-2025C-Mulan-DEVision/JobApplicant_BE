@@ -57,26 +57,26 @@ public class AdminJobPostController {
      * Delete a job post by ID
      * This is a wrapper endpoint that redirects to Job Manager's delete API
      * 
-     * @param id Job post UUID
+     * @param jobPostId Job post UUID
      * @return ApiResponse with success/failure message
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteJobPost(@PathVariable String id) {
-        log.info("Admin deleting job post with ID: {}", id);
+    @DeleteMapping("/{jobPostId}")
+    public ResponseEntity<ApiResponse<Void>> removeJobPost(@PathVariable("jobPostId") String jobPostId) {
+        log.info("Admin deleting job post with ID: {}", jobPostId);
         
         try {
             // Call Job Manager delete endpoint (returns ApiResponse wrapper)
-            ApiResponse<Void> response = jobPostAdminClient.deleteJobPost(id);
+            ApiResponse<Void> response = jobPostAdminClient.deleteJobPost(jobPostId);
             
             if (response.isSuccess()) {
-                log.info("Job post deleted successfully: {}", id);
+                log.info("Job post deleted successfully: {}", jobPostId);
                 return ResponseEntity.ok(response);
             } else {
                 log.warn("Failed to delete job post: {}", response.getMessage());
                 return ResponseEntity.badRequest().body(response);
             }
         } catch (Exception e) {
-            log.error("Failed to delete job post {}: {}", id, e.getMessage(), e);
+            log.error("Failed to delete job post {}: {}", jobPostId, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error(
                 "Failed to delete job post: " + e.getMessage()
             ));
