@@ -20,7 +20,6 @@ import java.util.UUID;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -40,8 +39,11 @@ public class UserRegisteredConsumer {
         /**
          * Handle user registered event.
          * Creates a new user profile with the same userId from auth-service.
+         * 
+         * NOTE: Exceptions are rethrown to allow Kafka to retry failed messages.
          */
         @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "${spring.kafka.consumer.group-id}")
+        @Transactional
         public void handleUserRegistered(UserRegisteredEvent event) {
 
                 log.info("Received user-registered event for userId: {} (Country: {})",
@@ -53,8 +55,45 @@ public class UserRegisteredConsumer {
                 log.info("Consumer routing thread to shard: {}", shardKey);
 
                 try {
-                        createProfileInShard(event);
+                        // Check if user already exists (idempotency)
+                        if (userRepository.existsById(event.getUserId())) {
+                                log.warn("User profile already exists for userId: {}, skipping creation.",
+                                                event.getUserId());
+                                return;
+                        }
 
+                        // Fetch country entity
+                        UUID countryId = null;
+                        String countryCode = event.getCountryAbbreviation();
+
+                        if (countryCode != null && !countryCode.isBlank()) {
+                                countryId = countryRepository.findByAbbreviationIgnoreCase(countryCode)
+                                                .map(Country::getId)
+                                                .orElse(null);
+                        }
+                        
+                        // Create new user profile
+                        User user = User.builder()
+                                        .id(event.getUserId())
+                                        .email(event.getEmail())
+                                        .firstName(event.getFirstName())
+                                        .lastName(event.getLastName())
+                                        .countryId(countryId)
+                                        .phone(event.getPhone())
+                                        .address(event.getAddress())
+                                        .city(event.getCity())
+                                        .build();
+
+                        userRepository.save(user);
+                        log.info("User saved for userId: {}", event.getUserId());
+
+                        UserSearchProfile userSearchProfile = new UserSearchProfile();
+                        userSearchProfile.setUserId(user.getId());
+                        userSearchProfile.setCountryAbbreviation(event.getCountryAbbreviation());
+                        userSearchProfileRepository.save(userSearchProfile);
+                        log.info("User search profile saved for userId: {}", event.getUserId());
+
+                        // Send that there is a new user profile created
                         UserProfileCreateEvent profileCreateEvent = UserProfileCreateEvent.builder()
                                         .userId(event.getUserId())
                                         .countryAbbreviation(event.getCountryAbbreviation())
@@ -65,7 +104,7 @@ public class UserRegisteredConsumer {
                                         .employmentTypes(null)
                                         .jobTitles(null)
                                         .build();
-                        // Send that there is a new user profile created
+                        
                         kafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent)
                                 .whenComplete((result, ex) -> {
                                     if (ex == null) {
@@ -80,50 +119,12 @@ public class UserRegisteredConsumer {
 
                         log.info("User profile created successfully for userId: {}", event.getUserId());
                 } catch (Exception e) {
-                        log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage());
+                        log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage(), e);
+                        // Rethrow to allow Kafka to retry the message
+                        throw new RuntimeException("Failed to create user profile for userId: " + event.getUserId(), e);
                 } finally {
-                        // 4. Always clear
                         ShardContext.clear();
                 }
-        }
-
-        @Transactional(propagation = Propagation.REQUIRES_NEW)
-        public void createProfileInShard(UserRegisteredEvent event) {
-                // Check if user already exists (idempotency)
-                if (userRepository.existsById(event.getUserId())) {
-                        log.warn("User profile already exists for userId: {}, skipping creation.",
-                                        event.getUserId());
-                        return;
-                }
-
-                // Fetch country entity
-                UUID countryId = null;
-                String countryCode = event.getCountryAbbreviation();
-
-                if (countryCode != null && !countryCode.isBlank()) {
-                        countryId = countryRepository.findByAbbreviationIgnoreCase(countryCode)
-                                        .map(Country::getId)
-                                        .orElse(null);
-                }
-                // Create new user profile
-                User user = User.builder()
-                                .id(event.getUserId())
-                                .email(event.getEmail())
-                                .firstName(event.getFirstName())
-                                .lastName(event.getLastName())
-                                .countryId(countryId)
-                                .phone(event.getPhone())
-                                .address(event.getAddress())
-                                .city(event.getCity())
-                                .build();
-
-                userRepository.save(user);
-
-                UserSearchProfile userSearchProfile = new UserSearchProfile();
-                userSearchProfile.setUserId(user.getId());
-                userSearchProfile.setCountryAbbreviation(event.getCountryAbbreviation());
-                userSearchProfileRepository.save(userSearchProfile);
-                log.info("User profile created in shard for userId: {}", event.getUserId());
         }
 
 }

@@ -56,7 +56,19 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, UserRegisteredEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        // Add error handler with retry policy: 3 retries with 2 second delay
+        factory.setCommonErrorHandler(userRegisteredErrorHandler());
         return factory;
+    }
+
+    @Bean
+    public CommonErrorHandler userRegisteredErrorHandler() {
+        // Retry 3 times with 2 second interval, then log and skip the message
+        FixedBackOff backOff = new FixedBackOff(2000L, 3);
+        DefaultErrorHandler errorHandler = new DefaultErrorHandler(backOff);
+        // Don't retry for these exception types
+        errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
+        return errorHandler;
     }
 
     @Bean
