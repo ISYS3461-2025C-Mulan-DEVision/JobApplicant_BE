@@ -14,7 +14,4 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CreateSubscriptionRequest {
     private UUID userId;
-    private SubscriptionStatus subscriptionStatus;
-    private LocalDate subscriptionStartDate;
-    private LocalDate subscriptionEndDate;
 }

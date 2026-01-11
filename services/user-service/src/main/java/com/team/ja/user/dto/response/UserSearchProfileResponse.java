@@ -34,6 +34,9 @@ public class UserSearchProfileResponse {
     @Schema(description = "Country abbreviation associated with this search profile")
     private String countryAbbreviation;
 
+    @Schema(description = "Is Fresher flag for this search profile")
+    private Boolean isFresher;
+
     @Schema(description = "Highest education level associated with this search profile")
     private EducationLevel educationLevel;
 

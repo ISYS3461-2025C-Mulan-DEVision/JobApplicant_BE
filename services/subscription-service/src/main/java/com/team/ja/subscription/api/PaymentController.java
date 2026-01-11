@@ -19,12 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
-@RequestMapping("/api/v1/payments")
+@RequestMapping("/api/v1/subscriptions/payments")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Subscription", description = "Subscription management endpoints")
@@ -38,12 +39,12 @@ public class PaymentController {
     @Operation(summary = "Get payment by ID") // This should be for reference only, actual
                                               // payment fetching is done via
                                               // PaymentClient
-    public ApiResponse<PaymentResponse> getPayment(@RequestParam String paymentId) {
+    public ApiResponse<PaymentResponse> getPayment(@PathVariable String paymentId) {
         log.info("Fetching payment with ID: {}", paymentId);
         return paymentClient.getPayment(paymentId);
     }
 
-    @PostMapping
+    @PostMapping("/request")
     @Operation(summary = "Create a new payment")
     public ApiResponse<PaymentResponse> createPayment(@RequestBody CreatePaymentRequest request) {
         log.info("Creating payment with request: {}", request);

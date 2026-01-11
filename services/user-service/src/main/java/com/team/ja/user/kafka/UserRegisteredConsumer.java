@@ -66,7 +66,17 @@ public class UserRegisteredConsumer {
                                         .jobTitles(null)
                                         .build();
                         // Send that there is a new user profile created
-                        kafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent);
+                        kafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent)
+                                .whenComplete((result, ex) -> {
+                                    if (ex == null) {
+                                        log.info("Sent UserProfileCreateEvent for user {} [partition: {}, offset: {}]", 
+                                                event.getUserId(),
+                                                result.getRecordMetadata().partition(),
+                                                result.getRecordMetadata().offset());
+                                    } else {
+                                        log.error("Failed to send UserProfileCreateEvent for user {}", event.getUserId(), ex);
+                                    }
+                                });
 
                         log.info("User profile created successfully for userId: {}", event.getUserId());
                 } catch (Exception e) {

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users_search_profiles (
 	salary_max NUMERIC(19,2),
 	country_abbreviation VARCHAR(16),
 	education_level VARCHAR(64),
+	is_Fresher BOOLEAN,
 	created_at TIMESTAMP WITHOUT TIME ZONE,
 	updated_at TIMESTAMP WITHOUT TIME ZONE,
 	is_active BOOLEAN DEFAULT true,
