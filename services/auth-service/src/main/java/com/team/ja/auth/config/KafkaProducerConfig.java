@@ -27,6 +27,7 @@ public class KafkaProducerConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    // Confluent Cloud SASL settings
     @Value("${spring.kafka.properties.security.protocol:PLAINTEXT}")
     private String securityProtocol;
 
