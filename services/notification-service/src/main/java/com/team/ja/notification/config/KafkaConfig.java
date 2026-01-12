@@ -167,4 +167,22 @@ public class KafkaConfig {
         factory.setConsumerFactory(userRegisteredConsumerFactory());
         return factory;
     }
+
+    /**
+     * Consumer factory for JobMatchedEvent.
+     * Used for listening to job-matched topic from user-service.
+     * When a job post matches a premium user's search profile, user-service publishes
+     * JobMatchedEvent and this consumer creates a notification for the user.
+     */
+    @Bean
+    public ConsumerFactory<String, JobMatchedEvent> jobMatchedConsumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(commonConsumerConfig());
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, JobMatchedEvent> jobMatchedKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, JobMatchedEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(jobMatchedConsumerFactory());
+        return factory;
+    }
 }

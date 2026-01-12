@@ -117,24 +117,46 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void createJobMatchNotification(UUID userId, String jobPostId, String jobTitle) {
-        log.info("Creating job match notification for user: {} for job: {}", userId, jobPostId);
+        log.info("Creating job match notification for premium user: {} for job: {}", userId, jobPostId);
 
         // Check if notification already exists to avoid duplicates
+        // This prevents duplicate notifications if the same job is re-evaluated
         if (notificationRepository.existsByUserIdAndJobPostIdAndNotificationTypeAndIsActiveTrue(
                 userId, jobPostId, NotificationType.JOB_MATCH)) {
             log.info("Job match notification already exists for user: {} and job: {}", userId, jobPostId);
             return;
         }
 
+        // Build notification message
+        String title = "🎯 New Job Match!";
+        String message = buildJobMatchMessage(jobTitle);
+
         CreateNotificationRequest request = CreateNotificationRequest.builder()
                 .userId(userId)
                 .notificationType(NotificationType.JOB_MATCH)
-                .title("New Job Match!")
-                .message("A new job posting matches your search profile: " + (jobTitle != null ? jobTitle : "Check it out!"))
+                .title(title)
+                .message(message)
                 .jobPostId(jobPostId)
                 .build();
 
         createNotification(request);
+        log.info("Successfully created job match notification for premium user: {} for job post: {}", userId, jobPostId);
+    }
+
+    /**
+     * Build a user-friendly job match notification message.
+     * 
+     * @param jobTitle the job title with optional location
+     * @return formatted notification message
+     */
+    private String buildJobMatchMessage(String jobTitle) {
+        if (jobTitle != null && !jobTitle.isEmpty()) {
+            return String.format("Great news! A new job posting matches your search profile: %s. " +
+                    "Click to view details and apply now!", jobTitle);
+        } else {
+            return "Great news! A new job posting matches your search profile. " +
+                    "Click to view details and apply now!";
+        }
     }
 
     @Override
