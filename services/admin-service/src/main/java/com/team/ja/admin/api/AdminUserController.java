@@ -76,6 +76,16 @@ public class AdminUserController {
         return userClient.reactivateUser(id);
     }
 
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete user", description = "Delete/deactivate a user account")
+    public ApiResponse<Void> deleteUser(
+            @PathVariable UUID id,
+            @RequestHeader(value = "X-User-Id", defaultValue = "") String adminId,
+            @RequestHeader(value = "X-User-Role") String role) {
+        authorize(role);
+        return userClient.deactivateUser(id, adminId);
+    }
+
     private void authorize(String role) {
         if (!"ADMIN".equals(role)) {
             throw new ForbiddenException("Insufficient permissions for admin endpoint");
