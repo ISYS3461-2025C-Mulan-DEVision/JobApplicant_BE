@@ -121,6 +121,8 @@ public interface UserService {
      * @param username        Comma-separated tokens to match against
      *                        firstName/lastName/fullName (case-insensitive
      *                        contains)
+     * @param ftsQuery        Full-Text Search query for searching across Work Experience,
+     *                        Objective Summary, and Technical Skills (case-insensitive)
      * @param page            0-based page number
      * @param size            page size
      * @return Paginated result
@@ -133,6 +135,7 @@ public interface UserService {
             String workExperience,
             String employmentTypes,
             String username,
+            String ftsQuery,
             int page,
             int size);
 

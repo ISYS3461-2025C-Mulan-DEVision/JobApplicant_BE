@@ -59,6 +59,7 @@ import java.util.Comparator;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import jakarta.persistence.criteria.Predicate;
 import javax.imageio.ImageIO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -670,6 +671,7 @@ public class UserServiceImpl implements UserService {
 
     /**
      * Paginated search combining FTS with filters and enforcing isActive.
+     * Supports Full-Text Search across Work Experience, Objective Summary, and Technical Skills.
      */
     public PageResponse<UserResponse> searchUsersPaged(
             String skills,
@@ -679,10 +681,11 @@ public class UserServiceImpl implements UserService {
             String workExperience,
             String employmentTypes,
             String username,
+            String ftsQuery,
             int page,
             int size) {
         log.info(
-                "Searching for users (paged) with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], username [{}], page [{}], size [{}]",
+                "Searching for users (paged) with skills [{}], country [{}], city [{}], education [{}], workExperience [{}], employmentTypes [{}], username [{}], ftsQuery [{}], page [{}], size [{}]",
                 skills,
                 country,
                 city,
@@ -690,6 +693,7 @@ public class UserServiceImpl implements UserService {
                 workExperience,
                 employmentTypes,
                 username,
+                ftsQuery,
                 page,
                 size);
 
@@ -792,6 +796,45 @@ public class UserServiceImpl implements UserService {
                 }
 
                 // Do not apply country filtering from username text here
+            }
+
+            // Full-Text Search across Work Experience, Objective Summary, and Technical Skills
+            if (ftsQuery != null && !ftsQuery.isBlank()) {
+                String fts = ftsQuery.trim();
+                
+                // Parse FTS query into keywords for searching
+                List<String> ftsKeywords = Arrays.stream(fts.split("[\\s,]+"))
+                        .map(s -> s.toLowerCase().trim())
+                        .filter(s -> !s.isEmpty())
+                        .toList();
+                
+                if (!ftsKeywords.isEmpty()) {
+                    // 1. Search in objective summary using PostgreSQL FTS
+                    List<User> ftsCandidates = userRepository.findByFts(fts);
+                    
+                    // 2. Search in work experience (job title, description, company name)
+                    Specification<User> workExpSpec = UserSpecification.hasWorkExperienceKeywords(ftsKeywords);
+                    
+                    // 3. Search in skills
+                    Specification<User> skillsSpec = UserSpecification.hasSkills(ftsKeywords);
+                    
+                    // Combine: Users matching FTS OR work experience OR skills
+                    Specification<User> ftsSpec = (root, query, cb) -> {
+                        // Get IDs from FTS candidates
+                        List<UUID> ftsIds = ftsCandidates.stream()
+                                .map(User::getId)
+                                .toList();
+                        
+                        // Build OR condition
+                        Predicate ftsPredicate = ftsIds.isEmpty() ? cb.disjunction() : root.get("id").in(ftsIds);
+                        Predicate workExpPredicate = workExpSpec.toPredicate(root, query, cb);
+                        Predicate skillsPredicate = skillsSpec.toPredicate(root, query, cb);
+                        
+                        return cb.or(ftsPredicate, workExpPredicate, skillsPredicate);
+                    };
+                    
+                    spec = spec.and(ftsSpec);
+                }
             }
 
             Pageable pageable = PageRequest.of(page, size);

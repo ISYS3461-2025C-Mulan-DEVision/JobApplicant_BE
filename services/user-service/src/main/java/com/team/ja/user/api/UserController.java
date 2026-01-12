@@ -73,7 +73,7 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    @Operation(summary = "Search for users", description = "Search for users based on various criteria with pagination")
+    @Operation(summary = "Search for users", description = "Search for users based on various criteria with pagination. Supports Full-Text Search across Work Experience, Objective Summary, and Technical Skills.")
     public ApiResponse<PageResponse<UserResponse>> searchUsers(
             @RequestParam(required = false) String skills,
             @RequestParam(required = false) String country,
@@ -82,6 +82,7 @@ public class UserController {
             @RequestParam(required = false) String workExperience,
             @RequestParam(required = false) String employmentTypes,
             @RequestParam(required = false) String username,
+            @RequestParam(required = false) String ftsQuery,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         PageResponse<UserResponse> result = userService.searchUsersPaged(
@@ -92,6 +93,7 @@ public class UserController {
                 workExperience,
                 employmentTypes,
                 username,
+                ftsQuery,
                 page,
                 size);
         return ApiResponse.success("Users retrieved successfully", result);

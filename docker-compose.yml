@@ -263,7 +263,7 @@ services:
     image: ja-eureka-server
     container_name: ja-eureka-server
     ports:
-      - "${EUREKA_PORT}:8761"
+      - "${EUREKA_PORT}:${EUREKA_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${EUREKA_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${EUREKA_SERVER_PORT}
@@ -281,7 +281,7 @@ services:
           "wget",
           "-q",
           "--spider",
-          "http://localhost:8761/actuator/health",
+          "http://localhost:9761/actuator/health",
         ]
       interval: 30s
       timeout: 10s
@@ -421,7 +421,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-api-gateway
     ports:
-      - "${API_GATEWAY_PORT}:8080"
+      - "${API_GATEWAY_PORT}:${API_GATEWAY_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${API_GATEWAY_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${API_GATEWAY_SERVER_PORT}
@@ -442,7 +442,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-auth-service
     ports:
-      - "${AUTH_SERVICE_PORT}:8081"
+      - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${AUTH_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${AUTH_SERVICE_SERVER_PORT}
@@ -493,7 +493,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-user-service
     ports:
-      - "${USER_SERVICE_PORT}:8085"
+      - "${USER_SERVICE_PORT}:${USER_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${USER_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${USER_SERVICE_SERVER_PORT}
@@ -513,7 +513,7 @@ services:
       AWS_S3_SECRET_KEY: ${AWS_S3_SECRET_KEY}
       AWS_S3_ENDPOINT: ${AWS_S3_ENDPOINT}
       # Auth Service
-      AUTH_SERVICE_URL: http://auth-service:8081
+      AUTH_SERVICE_URL: http://auth-service:${AUTH_SERVICE_SERVER_PORT}
     depends_on:
       # kafka:
       #   condition: service_healthy
@@ -543,7 +543,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-application-service
     ports:
-      - "${APPLICATION_SERVICE_PORT}:8083"
+      - "${APPLICATION_SERVICE_PORT}:${APPLICATION_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${APPLICATION_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${APPLICATION_SERVICE_SERVER_PORT}
@@ -580,7 +580,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-notification-service
     ports:
-      - "${NOTIFICATION_SERVICE_PORT}:8086"
+      - "${NOTIFICATION_SERVICE_PORT}:${NOTIFICATION_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${NOTIFICATION_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${NOTIFICATION_SERVICE_SERVER_PORT}
@@ -613,7 +613,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-subscription-service
     ports:
-      - "${SUBSCRIPTION_SERVICE_PORT}:8087"
+      - "${SUBSCRIPTION_SERVICE_PORT}:${SUBSCRIPTION_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${SUBSCRIPTION_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${SUBSCRIPTION_SERVICE_SERVER_PORT}
@@ -639,7 +639,7 @@ services:
       dockerfile: Dockerfile
     container_name: ja-admin-service
     ports:
-      - "${ADMIN_SERVICE_PORT}:8088"
+      - "${ADMIN_SERVICE_PORT}:${ADMIN_SERVICE_SERVER_PORT}"
     environment:
       SPRING_APPLICATION_NAME: ${ADMIN_SERVICE_SPRING_APPLICATION_NAME}
       SERVER_PORT: ${ADMIN_SERVICE_SERVER_PORT}
