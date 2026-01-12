@@ -31,10 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserRegisteredConsumer {
 
-        private final UserRepository userRepository;
-        private final CountryRepository countryRepository;
-        private final UserSearchProfileRepository userSearchProfileRepository;
-        private final KafkaTemplate<String, UserProfileCreateEvent> kafkaTemplate;
+        private final com.team.ja.user.service.impl.UserProfileRegistrationService registrationService;
 
         /**
          * Handle user registered event.
@@ -43,7 +40,6 @@ public class UserRegisteredConsumer {
          * NOTE: Exceptions are rethrown to allow Kafka to retry failed messages.
          */
         @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "${spring.kafka.consumer.group-id}")
-        @Transactional
         public void handleUserRegistered(UserRegisteredEvent event) {
 
                 log.info("Received user-registered event for userId: {} (Country: {})",
@@ -55,73 +51,12 @@ public class UserRegisteredConsumer {
                 log.info("Consumer routing thread to shard: {}", shardKey);
 
                 try {
-                        // Check if user already exists (idempotency)
-                        if (userRepository.existsById(event.getUserId())) {
-                                log.warn("User profile already exists for userId: {}, skipping creation.",
-                                                event.getUserId());
-                                return;
-                        }
-
-                        // Fetch country entity
-                        UUID countryId = null;
-                        String countryCode = event.getCountryAbbreviation();
-
-                        if (countryCode != null && !countryCode.isBlank()) {
-                                countryId = countryRepository.findByAbbreviationIgnoreCase(countryCode)
-                                                .map(Country::getId)
-                                                .orElse(null);
-                        }
-                        
-                        // Create new user profile
-                        User user = User.builder()
-                                        .id(event.getUserId())
-                                        .email(event.getEmail())
-                                        .firstName(event.getFirstName())
-                                        .lastName(event.getLastName())
-                                        .countryId(countryId)
-                                        .phone(event.getPhone())
-                                        .address(event.getAddress())
-                                        .city(event.getCity())
-                                        .build();
-
-                        userRepository.save(user);
-                        log.info("User saved for userId: {}", event.getUserId());
-
-                        UserSearchProfile userSearchProfile = new UserSearchProfile();
-                        userSearchProfile.setUserId(user.getId());
-                        userSearchProfile.setCountryAbbreviation(event.getCountryAbbreviation());
-                        userSearchProfileRepository.save(userSearchProfile);
-                        log.info("User search profile saved for userId: {}", event.getUserId());
-
-                        // Send that there is a new user profile created
-                        UserProfileCreateEvent profileCreateEvent = UserProfileCreateEvent.builder()
-                                        .userId(event.getUserId())
-                                        .countryAbbreviation(event.getCountryAbbreviation())
-                                        .educationLevel(null)
-                                        .skillIds(null)
-                                        .minSalary(null)
-                                        .maxSalary(null)
-                                        .employmentTypes(null)
-                                        .jobTitles(null)
-                                        .build();
-                        
-                        kafkaTemplate.send(KafkaTopics.USER_PROFILE_CREATE, profileCreateEvent)
-                                .whenComplete((result, ex) -> {
-                                    if (ex == null) {
-                                        log.info("Sent UserProfileCreateEvent for user {} [partition: {}, offset: {}]", 
-                                                event.getUserId(),
-                                                result.getRecordMetadata().partition(),
-                                                result.getRecordMetadata().offset());
-                                    } else {
-                                        log.error("Failed to send UserProfileCreateEvent for user {}", event.getUserId(), ex);
-                                    }
-                                });
-
-                        log.info("User profile created successfully for userId: {}", event.getUserId());
+                        registrationService.saveProfileInShard(event);
+                        log.info("User profile created successfully for userId: {} in shard: {}", event.getUserId(), shardKey);
                 } catch (Exception e) {
                         log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage(), e);
                         // Rethrow to allow Kafka to retry the message
-                        throw new RuntimeException("Failed to create user profile for userId: " + event.getUserId(), e);
+                        throw e;
                 } finally {
                         ShardContext.clear();
                 }

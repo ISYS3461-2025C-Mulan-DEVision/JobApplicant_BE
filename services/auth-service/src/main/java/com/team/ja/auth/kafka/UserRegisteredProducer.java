@@ -28,20 +28,14 @@ public class UserRegisteredProducer {
      */
     public void sendUserRegisteredEvent(UserRegisteredEvent event) {
         log.info("Publishing user-registered event for userId: {}", event.getUserId());
-        
-        CompletableFuture<SendResult<String, UserRegisteredEvent>> future = 
-                kafkaTemplate.send(KafkaTopics.USER_REGISTERED, event.getUserId().toString(), event);
-        
-        future.whenComplete((result, ex) -> {
-            if (ex == null) {
-                log.info("User-registered event sent successfully for userId: {} [partition: {}, offset: {}]",
-                        event.getUserId(),
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
-            } else {
-                log.error("Failed to send user-registered event for userId: {}", event.getUserId(), ex);
-            }
-        });
+        try {
+            // Wait for acknowledgement synchronously to ensure User Service will eventually get it
+            kafkaTemplate.send(KafkaTopics.USER_REGISTERED, event.getUserId().toString(), event).get();
+            log.info("User-registered event ACK received for userId: {}", event.getUserId());
+        } catch (Exception ex) {
+            log.error("CRITICAL: Failed to send user-registered event. Profile creation will fail!", ex);
+            throw new RuntimeException("Kafka event failure", ex);
+        }
     }
 }
 
