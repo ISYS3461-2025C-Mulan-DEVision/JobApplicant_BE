@@ -6,7 +6,9 @@ import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.common.event.UserProfileCreateEvent;
 import com.team.ja.common.event.UserRegisteredEvent;
 
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +23,7 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.util.StringUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
@@ -28,6 +31,7 @@ import java.util.Map;
 
 /**
  * Kafka consumer configuration for user-service.
+ * Supports both local Kafka and Confluent Cloud (SASL/SSL).
  */
 @Configuration
 @EnableKafka
@@ -39,8 +43,19 @@ public class KafkaConsumerConfig {
     @Value("${spring.kafka.consumer.group-id}")
     private String groupId;
 
-    @Bean
-    public ConsumerFactory<String, UserRegisteredEvent> consumerFactory() {
+    @Value("${spring.kafka.properties.security.protocol:PLAINTEXT}")
+    private String securityProtocol;
+
+    @Value("${spring.kafka.properties.sasl.mechanism:}")
+    private String saslMechanism;
+
+    @Value("${spring.kafka.properties.sasl.jaas.config:}")
+    private String saslJaasConfig;
+
+    /**
+     * Creates common consumer configuration with SASL/SSL support.
+     */
+    private Map<String, Object> commonConsumerConfig() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -49,7 +64,30 @@ public class KafkaConsumerConfig {
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
-        return new DefaultKafkaConsumerFactory<>(configProps);
+        // Add SASL/SSL properties for Confluent Cloud
+        addSaslProperties(configProps);
+
+        return configProps;
+    }
+
+    /**
+     * Adds SASL/SSL properties if configured (for Confluent Cloud).
+     */
+    private void addSaslProperties(Map<String, Object> configProps) {
+        if (StringUtils.hasText(securityProtocol) && !"PLAINTEXT".equals(securityProtocol)) {
+            configProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+        }
+        if (StringUtils.hasText(saslMechanism)) {
+            configProps.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
+        }
+        if (StringUtils.hasText(saslJaasConfig)) {
+            configProps.put(SaslConfigs.SASL_JAAS_CONFIG, saslJaasConfig);
+        }
+    }
+
+    @Bean
+    public ConsumerFactory<String, UserRegisteredEvent> consumerFactory() {
+        return new DefaultKafkaConsumerFactory<>(commonConsumerConfig());
     }
 
     @Bean
@@ -73,15 +111,7 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, SkillCreateEvent> skillCreateEventConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        return new DefaultKafkaConsumerFactory<>(configProps);
+        return new DefaultKafkaConsumerFactory<>(commonConsumerConfig());
     }
 
     @Bean
@@ -97,8 +127,7 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         // Use ErrorHandlingDeserializer as a wrapper so deserialization errors are
-        // surfaced
-        // to the container's error handler instead of failing the consumer thread.
+        // surfaced to the container's error handler instead of failing the consumer thread.
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         configProps.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
@@ -106,6 +135,9 @@ public class KafkaConsumerConfig {
         // Trust both common events and the DTO package that appears in hosted messages
         configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event,com.team.ja.user.dto.request");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        // Add SASL/SSL properties for Confluent Cloud
+        addSaslProperties(configProps);
 
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
@@ -121,29 +153,16 @@ public class KafkaConsumerConfig {
 
     @Bean
     public CommonErrorHandler migrateErrorHandler(KafkaTemplate<String, UserMigrationEvent> template) {
-
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
-
         FixedBackOff backOff = new FixedBackOff(2000L, 3);
-
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
-
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
-
         return errorHandler;
     }
 
     @Bean
     public ConsumerFactory<String, UserProfileCreateEvent> userProfileCreateEventConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
-        return new DefaultKafkaConsumerFactory<>(configProps);
+        return new DefaultKafkaConsumerFactory<>(commonConsumerConfig());
     }
 
     @Bean
@@ -155,14 +174,8 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, JobPostingEvent> jobPostingEventConsumerFactory() {
-        Map<String, Object> configProps = new HashMap<>();
-        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
-        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
+        Map<String, Object> configProps = commonConsumerConfig();
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
