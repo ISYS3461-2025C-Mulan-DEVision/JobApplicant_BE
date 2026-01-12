@@ -61,6 +61,7 @@ public class RegisterRequest {
     @Schema(description = "Country abbreviation (2-letter)", example = "US")
     private String country;
 
+    @Pattern(regexp = "^\\+[0-9]{1,12}$", message = "Phone number must start with '+' followed by up to 12 digits.")
     @Size(max = 20, message = "Phone must not exceed 20 characters")
     @Schema(description = "Phone number", example = "+84123456789")
     private String phone;

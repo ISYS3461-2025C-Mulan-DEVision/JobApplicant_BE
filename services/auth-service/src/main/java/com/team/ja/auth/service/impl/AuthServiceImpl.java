@@ -26,6 +26,7 @@ import com.team.ja.common.exception.NotFoundException;
 import com.team.ja.common.exception.UnauthorizedException;
 import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -201,17 +202,33 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
+        // Find existing token to preserve data
+        Optional<VerificationToken> existingTokenOpt = verificationTokenRepository
+            .findFirstByCredentialAndTokenTypeOrderByCreatedAtDesc(credential, TokenType.ACTIVATION);
+
         // Invalidate all old tokens for this user before creating a new one
         verificationTokenRepository.deleteByCredential(credential);
         log.info("Invalidated old verification tokens for {}", email);
 
         // Generate and save a new verification token
         String token = UUID.randomUUID().toString();
-        VerificationToken verificationToken = VerificationToken.builder()
+        VerificationToken.VerificationTokenBuilder<?, ?> tokenBuilder = VerificationToken.builder()
             .token(token)
             .credential(credential)
-            .expiryDate(LocalDateTime.now().plusHours(24)) // Token valid for 24 hours
-            .build();
+            .tokenType(TokenType.ACTIVATION)
+            .expiryDate(LocalDateTime.now().plusHours(24)); // Token valid for 24 hours
+
+        // Copy profile data if available
+        existingTokenOpt.ifPresent(existing -> {
+            tokenBuilder.firstName(existing.getFirstName())
+                .lastName(existing.getLastName())
+                .countryAbbreviation(existing.getCountryAbbreviation())
+                .phone(existing.getPhone())
+                .address(existing.getAddress())
+                .city(existing.getCity());
+        });
+
+        VerificationToken verificationToken = tokenBuilder.build();
         verificationTokenRepository.save(verificationToken);
         log.info("Generated new verification token for {}: {}", email, token);
 

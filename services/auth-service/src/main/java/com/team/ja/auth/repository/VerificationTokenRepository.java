@@ -25,5 +25,7 @@ public interface VerificationTokenRepository
     
     void deleteByCredential(AuthCredential credential);
 
+    Optional<VerificationToken> findFirstByCredentialAndTokenTypeOrderByCreatedAtDesc(AuthCredential credential, TokenType tokenType);
+
     void deleteByCredentialAndTokenType(AuthCredential credential, TokenType tokenType);
 }
