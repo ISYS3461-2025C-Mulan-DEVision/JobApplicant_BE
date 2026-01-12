@@ -255,7 +255,8 @@ public class SkillServiceImpl implements SkillService {
             }
 
             log.info("Finished adding skills to user {}", userId);
-            return getUserSkills(userId);
+            userSkillRepository.flush();
+            return getUserSkillsInternal(userId);
 
         } finally {
             ShardContext.clear();
@@ -471,19 +472,22 @@ public class SkillServiceImpl implements SkillService {
         ShardContext.setShardKey(shardKey);
 
         try {
-
-            List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
-            List<UUID> skillIds = userSkills.stream().map(UserSkill::getSkillId).toList();
-
-            if (skillIds.isEmpty()) {
-                return List.of();
-            }
-
-            List<Skill> skills = skillRepository.findByIdInAndIsActiveTrue(skillIds);
-            return skillMapper.toResponseList(skills);
+            return getUserSkillsInternal(userId);
         } finally {
             ShardContext.clear();
         }
+    }
+
+    private List<SkillResponse> getUserSkillsInternal(UUID userId) {
+        List<UserSkill> userSkills = userSkillRepository.findByUserIdAndIsActiveTrue(userId);
+        List<UUID> skillIds = userSkills.stream().map(UserSkill::getSkillId).toList();
+
+        if (skillIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Skill> skills = skillRepository.findByIdInAndIsActiveTrue(skillIds);
+        return skillMapper.toResponseList(skills);
     }
 
     @Override
