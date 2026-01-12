@@ -211,7 +211,7 @@ public class UserServiceImpl implements UserService {
                     userMigrationEventKafkaTemplate.send(KafkaTopics.USER_MIGRATION, migrationEvent)
                             .whenComplete((result, ex) -> {
                                 if (ex == null) {
-                                    log.info("Sent UserMigrationEvent for user {} [partition: {}, offset: {}]", 
+                                    log.info("Sent UserMigrationEvent for user {} [partition: {}, offset: {}]",
                                             userId,
                                             result.getRecordMetadata().partition(),
                                             result.getRecordMetadata().offset());
@@ -267,7 +267,8 @@ public class UserServiceImpl implements UserService {
                     userSearchProfileUpdateKafkaTemplate.send(KafkaTopics.USER_PROFILE_UPDATE, searchProfileEvent)
                             .whenComplete((result, ex) -> {
                                 if (ex == null) {
-                                    log.info("Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]", 
+                                    log.info(
+                                            "Sent UserSearchProfileUpdateEvent for user {} [partition: {}, offset: {}]",
                                             userId,
                                             result.getRecordMetadata().partition(),
                                             result.getRecordMetadata().offset());
@@ -506,7 +507,7 @@ public class UserServiceImpl implements UserService {
             ShardContext.setShardKey(shardKey);
             try {
                 long shardCount = userRepository.count();
-                
+
                 long shardStart = globalTotal;
                 long shardEnd = globalTotal + shardCount;
 
@@ -514,40 +515,42 @@ public class UserServiceImpl implements UserService {
                 if (Math.max(shardStart, reqStart) < Math.min(shardEnd, reqEnd)) {
                     long localOffset = Math.max(0, reqStart - shardStart);
                     long itemsToTake = Math.min(shardEnd, reqEnd) - Math.max(shardStart, reqStart);
-                    
+
                     // Fetch logic: standard JPA pages are page-aligned (0, 20), (1, 20).
                     // We need offset-based. We will fetch page(s) covering our range and trim.
                     int fetchPage = (int) (localOffset / size);
                     // Fetch slightly more to ensure coverage if localOffset isn't aligned
-                    int fetchSize = size + (int)(localOffset % size); 
-                    
-                    // Actually, simpler: just use PageRequest with offset if we could, 
-                    // but since we can't easily, we'll request a page that definitely starts before our target.
-                    // Or, since we're refactoring for performance, we accept that 'page' here is relative to 
+                    int fetchSize = size + (int) (localOffset % size);
+
+                    // Actually, simpler: just use PageRequest with offset if we could,
+                    // but since we can't easily, we'll request a page that definitely starts before
+                    // our target.
+                    // Or, since we're refactoring for performance, we accept that 'page' here is
+                    // relative to
                     // the shard's data stream.
-                    
+
                     // Robust approach:
                     // Calculate absolute index in shard: localOffset
                     // We need 'itemsToTake' rows starting at 'localOffset'.
-                    
+
                     // To do this via standard JPA findAll(Pageable):
                     // Page number = localOffset / size
                     // We might need data from Page N and Page N+1 if the slice crosses a boundary.
-                    
+
                     int startPage = (int) (localOffset / size);
                     int endPage = (int) ((localOffset + itemsToTake - 1) / size);
-                    
+
                     List<User> shardUsers = new ArrayList<>();
                     for (int p = startPage; p <= endPage; p++) {
                         shardUsers.addAll(userRepository.findAll(PageRequest.of(p, size)).getContent());
                     }
-                    
+
                     // Trim the results
                     // The first element of shardUsers is at index: startPage * size
                     long listStartIndex = (long) startPage * size;
                     int subListStart = (int) (localOffset - listStartIndex);
                     int subListEnd = Math.min(shardUsers.size(), subListStart + (int) itemsToTake);
-                    
+
                     if (subListStart < shardUsers.size() && subListStart < subListEnd) {
                         List<User> relevantUsers = shardUsers.subList(subListStart, subListEnd);
                         pagedResponses.addAll(relevantUsers.stream()
@@ -556,7 +559,7 @@ public class UserServiceImpl implements UserService {
                                 .toList());
                     }
                 }
-                
+
                 globalTotal += shardCount;
             } catch (Exception e) {
                 log.error("Error processing shard {}", shardKey, e);
@@ -845,23 +848,39 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void deactivateUser(UUID userId) {
-        log.info("Deactivating user with ID: {}", userId);
+        log.info("=== START deactivateUser - UserID: {}", userId);
 
         String shardKey = shardLookupService.findShardIdByUserId(userId);
+        log.info("Found shard key for user {}: {}", userId, shardKey);
         ShardContext.setShardKey(shardKey);
+        log.info("Shard context set to: {}", shardKey);
 
         try {
-            transactionTemplate.executeWithoutResult(status -> {
-                User user = userRepository
-                        .findById(userId)
-                        .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-                user.deactivate();
-                userRepository.save(user);
-            });
-            log.info("Deactivated user with ID: {}", userId);
+            log.info("Fetching user from repository with ID: {}", userId);
+            User user = userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+
+            log.info("User found - ID: {}, Email: {}, isActive BEFORE: {}",
+                    user.getId(), user.getEmail(), user.isActive());
+
+            user.deactivate();
+            log.info("Called user.deactivate() - isActive AFTER deactivate(): {}", user.isActive());
+
+            User savedUser = userRepository.save(user);
+            log.info("User saved to repository - isActive AFTER save: {}, deactivatedAt: {}",
+                    savedUser.isActive(), savedUser.getDeactivatedAt());
+
+            log.info("=== COMPLETED deactivateUser successfully for UserID: {}", userId);
+        } catch (Exception e) {
+            log.error("=== ERROR in deactivateUser for UserID: {}", userId, e);
+            throw e;
         } finally {
+            log.info("Clearing shard context");
             ShardContext.clear();
+            log.info("=== END deactivateUser");
         }
     }
 
@@ -919,9 +938,9 @@ public class UserServiceImpl implements UserService {
 
         try {
             User user = userRepository
-                .findById(userId)
-                .filter(User::isActive)
-                .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+                    .findById(userId)
+                    .filter(User::isActive)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
 
             // Call auth-service to change password
             authServiceClient.changePassword(user.getEmail(), request);
