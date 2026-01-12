@@ -25,9 +25,10 @@ public class UserProfileRegistrationService {
     private final CountryRepository countryRepository;
     private final UserSearchProfileRepository userSearchProfileRepository;
     private final KafkaTemplate<String, UserProfileCreateEvent> kafkaTemplate;
+    private final ShardLookupService shardLookupService;
 
     @Transactional
-    public void saveProfileInShard(UserRegisteredEvent event) {
+    public void saveProfileInShard(UserRegisteredEvent event, String shardKey) {
         if (userRepository.existsById(event.getUserId())) {
             log.warn("User profile already exists for userId: {}, skipping.", event.getUserId());
             return;
@@ -53,6 +54,11 @@ public class UserProfileRegistrationService {
                 .build();
 
         userRepository.save(user);
+        
+        // Cache the shard location for this user immediately
+        shardLookupService.cachedUserIdShard(user.getId(), shardKey);
+        shardLookupService.cachedUserEmailShard(user.getEmail(), shardKey);
+        
         log.info("User saved for userId: {}", event.getUserId());
 
         UserSearchProfile userSearchProfile = new UserSearchProfile();

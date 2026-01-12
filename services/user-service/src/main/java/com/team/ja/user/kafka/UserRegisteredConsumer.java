@@ -39,7 +39,7 @@ public class UserRegisteredConsumer {
          * 
          * NOTE: Exceptions are rethrown to allow Kafka to retry failed messages.
          */
-        @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "${spring.kafka.consumer.group-id}")
+        @KafkaListener(topics = KafkaTopics.USER_REGISTERED, groupId = "user-service-user-registered-group")
         public void handleUserRegistered(UserRegisteredEvent event) {
 
                 log.info("Received user-registered event for userId: {} (Country: {})",
@@ -51,7 +51,7 @@ public class UserRegisteredConsumer {
                 log.info("Consumer routing thread to shard: {}", shardKey);
 
                 try {
-                        registrationService.saveProfileInShard(event);
+                        registrationService.saveProfileInShard(event, shardKey);
                         log.info("User profile created successfully for userId: {} in shard: {}", event.getUserId(), shardKey);
                 } catch (Exception e) {
                         log.error("Failed to sync user to shard {}: {}", shardKey, e.getMessage(), e);
