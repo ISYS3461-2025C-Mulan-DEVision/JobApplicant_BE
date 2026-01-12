@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name = "${services.jm-job-post.name:JM_JOB_POST}")
+@FeignClient(name = "${services.jm.jobpost.name:JM_JOB_POST}")
 public interface JobPostClient {
 
     // Returns data directly (not wrapped in ApiResponse)
