@@ -82,7 +82,7 @@ public class ShardLookupService {
                 .orElseThrow(() -> new IllegalArgumentException("Country ID not found: " + countryId));
 
         String abbreviation = country.getAbbreviation(); // e.g., "VN"
-        String shardId = shardingProperties.getShardForCountry(abbreviation);
+        String shardId = ShardingProperties.resolveShard(abbreviation);
 
         log.debug("Country {} ({}) maps to shard: {}", country.getName(), abbreviation, shardId);
         return shardId;
@@ -317,7 +317,7 @@ public class ShardLookupService {
 
                 Country country = countryRepository.findById(newCountryId).orElse(null);
 
-                String expectedShard = shardingProperties.getShardForCountry(country.getAbbreviation());
+                String expectedShard = ShardingProperties.resolveShard(country.getAbbreviation());
 
                 if (currentShard != null && !currentShard.equals(expectedShard)) {
                     invalidateCache(userId);
