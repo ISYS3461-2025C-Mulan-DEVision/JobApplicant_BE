@@ -27,6 +27,7 @@ public class UserSubscriptionConsumer {
         log.info("Received subscription activate event for user subscription processing: {}", event);
 
         try {
+
             // Determine the shard for the user
             String shardKey = shardLookupService.findShardIdByUserId(event.getPayerId());
             ShardContext.setShardKey(shardKey);
@@ -39,6 +40,8 @@ public class UserSubscriptionConsumer {
             user.setPremium(true);
             userRepository.save(user);
             log.info("Updated user subscription status for user ID: {}", event.getPayerId());
+        } catch (Exception e) {
+            log.error("Error processing subscription activate event for user ID: {}", event.getPayerId(), e);
         } finally {
             ShardContext.clear();
         }

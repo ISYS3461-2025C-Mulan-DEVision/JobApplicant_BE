@@ -46,7 +46,7 @@ public class JobPostingConsumer {
      * Matches job against all active search profiles
      * Publishes notifications for matched profiles
      */
-    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "${spring.kafka.consumer.group-id:user-service}")
+    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "${spring.kafka.consumer.group-id:user-service}", containerFactory = "jobPostingEventKafkaListenerContainerFactory")
     public void handleJobPosted(JobPostingEvent jobEvent) {
         log.info("Received job posting event: jobId={}, title={}", jobEvent.getJobPostId(), jobEvent.getTitle());
 

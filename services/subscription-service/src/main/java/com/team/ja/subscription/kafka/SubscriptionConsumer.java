@@ -35,6 +35,11 @@ public class SubscriptionConsumer {
     @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "${spring.kafka.consumer.group-id}")
     public void handlePaymentResponse(PaymentCompletedEvent event) {
 
+        if ("COMPANY".equals(event.getPayerType())) {
+            log.info("Ignoring payment completed event for COMPANY payer type: {}", event);
+            return;
+        }
+
         log.info("Received payment completed response for subscription processing: {}", event);
         // Fetch user subscriptions, this should have 1 active subscription and possibly
         // old inactive ones
