@@ -59,13 +59,9 @@ public class AdminUserController {
     @Operation(summary = "Deactivate user", description = "Deactivate a user account")
     public ApiResponse<Void> deactivateUser(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", defaultValue = "") String adminId,
             @RequestHeader(value = "X-User-Role") String role) {
         authorize(role);
-        // In a real scenario, we might want to ensure the caller is an admin here or
-        // via Gateway.
-        // We pass the adminId header if user-service checks it.
-        return userClient.deactivateUser(id, adminId);
+        return userClient.deactivateUser(id, role);
     }
 
     @PostMapping("/{id}/reactivate")
@@ -80,10 +76,9 @@ public class AdminUserController {
     @Operation(summary = "Delete user", description = "Delete/deactivate a user account")
     public ApiResponse<Void> deleteUser(
             @PathVariable UUID id,
-            @RequestHeader(value = "X-User-Id", defaultValue = "") String adminId,
             @RequestHeader(value = "X-User-Role") String role) {
         authorize(role);
-        return userClient.deactivateUser(id, adminId);
+        return userClient.deactivateUser(id, role);
     }
 
     private void authorize(String role) {
