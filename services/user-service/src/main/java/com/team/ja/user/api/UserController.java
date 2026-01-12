@@ -147,10 +147,7 @@ public class UserController {
     }
 
     @PostMapping("/{id}/change-password")
-    @Operation(
-        summary = "Change password",
-        description = "Change user password. Requires current password verification."
-    )
+    @Operation(summary = "Change password", description = "Change user password. Requires current password verification.")
     public ApiResponse<String> changePassword(
             @Parameter(description = "User ID") @PathVariable UUID id,
             @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
@@ -166,9 +163,10 @@ public class UserController {
     @Operation(summary = "Deactivate user", description = "Soft delete user account (User can only deactivate own account, or Admin)")
     public ApiResponse<Void> deactivateUser(
             @Parameter(description = "User ID") @PathVariable UUID id,
-            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            // @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id")
+            // String authUserId,
             @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole) {
-        authorize(id, authUserId, userRole);
+        adminOnly(userRole);
         userService.deactivateUser(id);
         return ApiResponse.success("User deactivated successfully", null);
     }
@@ -195,6 +193,13 @@ public class UserController {
         }
         UUID authUserId = UUID.fromString(authUserIdStr);
         if (!userIdFromPath.equals(authUserId)) {
+            throw new ForbiddenException(
+                    "You are not authorized to access this resource.");
+        }
+    }
+
+    private void adminOnly(String userRole) {
+        if (!"ADMIN".equals(userRole)) {
             throw new ForbiddenException(
                     "You are not authorized to access this resource.");
         }

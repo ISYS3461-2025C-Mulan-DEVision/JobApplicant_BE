@@ -31,7 +31,7 @@ public interface UserClient {
         ApiResponse<Object> getUserById(@PathVariable("id") UUID id);
 
         @DeleteMapping("/api/v1/users/{id}")
-        ApiResponse<Void> deactivateUser(@PathVariable("id") UUID id, @RequestHeader("X-User-Id") String adminId);
+        ApiResponse<Void> deactivateUser(@PathVariable("id") UUID id, @RequestHeader("X-User-Role") String adminRole);
 
         @PostMapping("/api/v1/users/{id}/reactivate")
         ApiResponse<Object> reactivateUser(@PathVariable("id") UUID id);
@@ -50,5 +50,11 @@ public interface UserClient {
 
         @GetMapping("/api/v1/skills/popular")
         ApiResponse<Object> getPopularSkills();
+
+        private void adminOnly(String userRole) {
+                if (userRole == null || !userRole.equals("ADMIN")) {
+                        throw new RuntimeException("Access denied: Admins only");
+                }
+        }
 
 }
