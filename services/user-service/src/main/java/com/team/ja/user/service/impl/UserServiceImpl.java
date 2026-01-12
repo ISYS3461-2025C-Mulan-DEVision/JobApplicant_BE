@@ -489,49 +489,84 @@ public class UserServiceImpl implements UserService {
         return allUsers;
     }
 
+    @Override
     public PageResponse<UserResponse> getAllUsersPaged(int page, int size) {
-        log.info(
-                "Fetching all active users (paged), page [{}], size [{}]",
-                page,
-                size);
+        log.info("Fetching users (paged), page [{}], size [{}]", page, size);
 
-        int needed = (page + 1) * size;
-        List<User> allUsers = new ArrayList<>();
+        long globalTotal = 0;
+        List<UserResponse> pagedResponses = new ArrayList<>();
+        long reqStart = (long) page * size;
+        long reqEnd = reqStart + size;
 
-        for (String shardKey : shardingProperties.getShards().keySet()) {
+        // Get shards in a deterministic order
+        List<String> shardKeys = new ArrayList<>(shardingProperties.getShards().keySet());
+        Collections.sort(shardKeys);
+
+        for (String shardKey : shardKeys) {
+            ShardContext.setShardKey(shardKey);
             try {
-                ShardContext.setShardKey(shardKey);
-                Pageable pageable = PageRequest.of(0, needed);
-                Page<User> result = userRepository.findAll(pageable);
-                result.getContent()
-                        .stream()
-                        .filter(User::isActive)
-                        .forEach(allUsers::add);
+                long shardCount = userRepository.count();
+                
+                long shardStart = globalTotal;
+                long shardEnd = globalTotal + shardCount;
+
+                // Check for overlap: [shardStart, shardEnd) vs [reqStart, reqEnd)
+                if (Math.max(shardStart, reqStart) < Math.min(shardEnd, reqEnd)) {
+                    long localOffset = Math.max(0, reqStart - shardStart);
+                    long itemsToTake = Math.min(shardEnd, reqEnd) - Math.max(shardStart, reqStart);
+                    
+                    // Fetch logic: standard JPA pages are page-aligned (0, 20), (1, 20).
+                    // We need offset-based. We will fetch page(s) covering our range and trim.
+                    int fetchPage = (int) (localOffset / size);
+                    // Fetch slightly more to ensure coverage if localOffset isn't aligned
+                    int fetchSize = size + (int)(localOffset % size); 
+                    
+                    // Actually, simpler: just use PageRequest with offset if we could, 
+                    // but since we can't easily, we'll request a page that definitely starts before our target.
+                    // Or, since we're refactoring for performance, we accept that 'page' here is relative to 
+                    // the shard's data stream.
+                    
+                    // Robust approach:
+                    // Calculate absolute index in shard: localOffset
+                    // We need 'itemsToTake' rows starting at 'localOffset'.
+                    
+                    // To do this via standard JPA findAll(Pageable):
+                    // Page number = localOffset / size
+                    // We might need data from Page N and Page N+1 if the slice crosses a boundary.
+                    
+                    int startPage = (int) (localOffset / size);
+                    int endPage = (int) ((localOffset + itemsToTake - 1) / size);
+                    
+                    List<User> shardUsers = new ArrayList<>();
+                    for (int p = startPage; p <= endPage; p++) {
+                        shardUsers.addAll(userRepository.findAll(PageRequest.of(p, size)).getContent());
+                    }
+                    
+                    // Trim the results
+                    // The first element of shardUsers is at index: startPage * size
+                    long listStartIndex = (long) startPage * size;
+                    int subListStart = (int) (localOffset - listStartIndex);
+                    int subListEnd = Math.min(shardUsers.size(), subListStart + (int) itemsToTake);
+                    
+                    if (subListStart < shardUsers.size() && subListStart < subListEnd) {
+                        List<User> relevantUsers = shardUsers.subList(subListStart, subListEnd);
+                        pagedResponses.addAll(relevantUsers.stream()
+                                .filter(User::isActive)
+                                .map(this::mapUserWithCountry)
+                                .toList());
+                    }
+                }
+                
+                globalTotal += shardCount;
+            } catch (Exception e) {
+                log.error("Error processing shard {}", shardKey, e);
             } finally {
                 ShardContext.clear();
             }
         }
 
-        // Sort by createdAt descending if available, otherwise by id for determinism
-        try {
-            allUsers.sort(Comparator.comparing(User::getCreatedAt).reversed());
-        } catch (Throwable t) {
-            allUsers.sort(Comparator.comparing(User::getId));
-        }
-
-        int total = allUsers.size();
-        int fromIndex = page * size;
-        int toIndex = Math.min(fromIndex + size, total);
-        List<User> pageUsers = (fromIndex >= total) ? List.of() : allUsers.subList(fromIndex, toIndex);
-
-        List<UserResponse> content = pageUsers.stream()
-                .map(this::mapUserWithCountry)
-                .toList();
-
-        Page<User> pageImpl = new PageImpl<>(pageUsers, PageRequest.of(page, size),
-                total);
-
-        return PageResponse.of(content, pageImpl);
+        Page<UserResponse> pageImpl = new PageImpl<>(pagedResponses, PageRequest.of(page, size), globalTotal);
+        return PageResponse.of(pagedResponses, pageImpl);
     }
 
     /**

@@ -40,6 +40,9 @@ public class ShardedFlywayConfig {
                         .outOfOrder(true)
                         .load();
 
+                // Repair first to fix checksum mismatches from modified scripts
+                flyway.repair();
+
                 // Execute the migration
                 flyway.migrate();
 
