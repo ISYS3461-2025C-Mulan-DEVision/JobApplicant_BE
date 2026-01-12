@@ -115,8 +115,9 @@ public class UserController {
     @Operation(summary = "Get user profile", description = "Retrieve complete user profile with education, experience, and skills")
     public ApiResponse<UserProfileResponse> getUserProfile(
             @Parameter(description = "User ID") @PathVariable UUID id,
-            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
-        authorize(id, authUserId);
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        authorize(id, authUserId, userRole);
         return ApiResponse.success(userService.getUserProfile(id));
     }
 
@@ -125,8 +126,9 @@ public class UserController {
     public ApiResponse<UserResponse> updateUser(
             @Parameter(description = "User ID") @PathVariable UUID id,
             @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @Valid @RequestBody UpdateUserRequest request) {
-        authorize(id, authUserId);
+        authorize(id, authUserId, userRole);
         return ApiResponse.success(
                 "User updated successfully",
                 userService.updateUser(id, request));
@@ -137,8 +139,9 @@ public class UserController {
     public ApiResponse<UserResponse> uploadAvatar(
             @Parameter(description = "User ID") @PathVariable UUID id,
             @Parameter(description = "Authenticated User ID from JWT") @RequestHeader("X-User-Id") String authUserIdStr,
+            @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @Parameter(description = "Avatar image file") @RequestParam("file") MultipartFile file) {
-        authorize(id, authUserIdStr);
+        authorize(id, authUserIdStr, userRole);
         UserResponse response = userService.uploadAvatar(id, file);
         return ApiResponse.success("Avatar uploaded successfully", response);
     }
@@ -151,19 +154,21 @@ public class UserController {
     public ApiResponse<String> changePassword(
             @Parameter(description = "User ID") @PathVariable UUID id,
             @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @Valid @RequestBody ChangePasswordRequest request) {
-        authorize(id, authUserId);
+        authorize(id, authUserId, userRole);
         userService.changePassword(id, request);
         return ApiResponse.success("Password changed successfully");
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Deactivate user", description = "Soft delete user account (User can only deactivate own account)")
+    @Operation(summary = "Deactivate user", description = "Soft delete user account (User can only deactivate own account, or Admin)")
     public ApiResponse<Void> deactivateUser(
             @Parameter(description = "User ID") @PathVariable UUID id,
-            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId) {
-        authorize(id, authUserId);
+            @Parameter(description = "Authenticated User ID") @RequestHeader("X-User-Id") String authUserId,
+            @Parameter(description = "User Role") @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        authorize(id, authUserId, userRole);
         userService.deactivateUser(id);
         return ApiResponse.success("User deactivated successfully", null);
     }
@@ -184,7 +189,10 @@ public class UserController {
         return ApiResponse.success(userService.existsByEmail(email));
     }
 
-    private void authorize(UUID userIdFromPath, String authUserIdStr) {
+    private void authorize(UUID userIdFromPath, String authUserIdStr, String userRole) {
+        if ("ADMIN".equals(userRole)) {
+            return;
+        }
         UUID authUserId = UUID.fromString(authUserIdStr);
         if (!userIdFromPath.equals(authUserId)) {
             throw new ForbiddenException(
