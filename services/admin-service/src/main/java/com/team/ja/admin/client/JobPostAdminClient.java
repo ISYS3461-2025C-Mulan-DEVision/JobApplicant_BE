@@ -5,6 +5,7 @@ import com.team.ja.common.dto.ApiResponse;
 import com.team.ja.common.dto.jobmanager.JobPostDto;
 import com.team.ja.common.dto.jobmanager.JobManagerPageResponse;
 import com.team.ja.common.dto.jobmanager.JobSearchRequest;
+import com.team.ja.admin.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
  * 
  * This client provides admin-level access to job post management operations.
  */
-@FeignClient(name = "job-post-service", url = "${app.jm.api.job-post-url}")
+@FeignClient(name = "${services.jm.jobpost.name}", url = "${services.jm.jobpost.url}", configuration = FeignConfig.class)
 public interface JobPostAdminClient {
 
     /**

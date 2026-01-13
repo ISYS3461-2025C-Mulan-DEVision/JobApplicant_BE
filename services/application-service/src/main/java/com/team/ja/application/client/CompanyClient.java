@@ -3,13 +3,14 @@ package com.team.ja.application.client;
 import com.team.ja.common.dto.ApiResponse;
 import com.team.ja.common.dto.jobmanager.CompanyDto;
 import com.team.ja.common.dto.jobmanager.CompanyProfileDto;
+import com.team.ja.application.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name = "company-service", url = "${app.jm.api.company-url}")
+@FeignClient(name = "${services.jm-company.name}", url = "${services.jm-company.url}", configuration = FeignConfig.class)
 public interface CompanyClient {
 
     // Returns wrapped in ApiResponse

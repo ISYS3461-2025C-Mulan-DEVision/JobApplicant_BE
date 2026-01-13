@@ -5,6 +5,7 @@ import com.team.ja.common.dto.jobmanager.JobManagerPageResponse;
 import com.team.ja.common.dto.jobmanager.JobPostDto;
 import com.team.ja.common.dto.jobmanager.JobSearchRequest;
 import com.team.ja.common.dto.jobmanager.JobSearchResultDto;
+import com.team.ja.application.config.FeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,27 +15,25 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
-@FeignClient(name = "job-post-service", url = "${app.jm.api.job-post-url}")
+@FeignClient(name = "${services.jm.jobpost.name}", url = "${services.jm.jobpost.url}", configuration = FeignConfig.class)
 public interface JobPostClient {
 
-    // Returns data directly (not wrapped in ApiResponse)
-    @GetMapping("/api/job-posts/public")
-    JobManagerPageResponse<JobPostDto> getPublicJobPosts(
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "20") int size
-    );
+        // Returns data directly (not wrapped in ApiResponse)
+        @GetMapping("/api/job-posts/public")
+        JobManagerPageResponse<JobPostDto> getPublicJobPosts(
+                        @RequestParam(value = "page", defaultValue = "0") int page,
+                        @RequestParam(value = "size", defaultValue = "20") int size);
 
-    // Returns data directly (not wrapped in ApiResponse)
-    @PostMapping("/api/external/job-posts/search")
-    JobManagerPageResponse<JobSearchResultDto> searchJobPosts(
-            @RequestBody JobSearchRequest request
-    );
-    
-    // Returns wrapped in ApiResponse
-    @GetMapping("/api/job-posts/{id}")
-    ApiResponse<JobPostDto> getJobPostById(@PathVariable("id") UUID id);
-    
-    // Returns wrapped in ApiResponse
-    @GetMapping("/api/external/job-posts/{id}")
-    ApiResponse<JobPostDto> getJobPostBasicInfo(@PathVariable("id") UUID id);
+        // Returns data directly (not wrapped in ApiResponse)
+        @PostMapping("/api/external/job-posts/search")
+        JobManagerPageResponse<JobSearchResultDto> searchJobPosts(
+                        @RequestBody JobSearchRequest request);
+
+        // Returns wrapped in ApiResponse
+        @GetMapping("/api/job-posts/{id}")
+        ApiResponse<JobPostDto> getJobPostById(@PathVariable("id") UUID id);
+
+        // Returns wrapped in ApiResponse
+        @GetMapping("/api/external/job-posts/{id}")
+        ApiResponse<JobPostDto> getJobPostBasicInfo(@PathVariable("id") UUID id);
 }

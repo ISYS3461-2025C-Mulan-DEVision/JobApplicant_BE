@@ -1,6 +1,7 @@
 package com.team.ja.user.config;
 
 import com.team.ja.common.event.JobPostingEvent;
+import com.team.ja.common.event.PaymentCompletedEvent;
 import com.team.ja.common.event.SkillCreateEvent;
 import com.team.ja.common.event.UserMigrationEvent;
 import com.team.ja.common.event.UserProfileCreateEvent;
@@ -22,6 +23,11 @@ import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.converter.JsonMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.util.StringUtils;
 import org.springframework.util.backoff.FixedBackOff;
@@ -61,7 +67,8 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "com.team.ja.common.event");
+        configProps.put(JsonDeserializer.TRUSTED_PACKAGES,
+                "com.team.ja.common.event,com.devision.job_manager_jobpost.event");
         configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         // Add SASL/SSL properties for Confluent Cloud
@@ -127,7 +134,8 @@ public class KafkaConsumerConfig {
         configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         // Use ErrorHandlingDeserializer as a wrapper so deserialization errors are
-        // surfaced to the container's error handler instead of failing the consumer thread.
+        // surfaced to the container's error handler instead of failing the consumer
+        // thread.
         configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         configProps.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
@@ -173,9 +181,16 @@ public class KafkaConsumerConfig {
     }
 
     @Bean
-    public ConsumerFactory<String, JobPostingEvent> jobPostingEventConsumerFactory() {
+    public ConsumerFactory<String, Object> jobPostingEventConsumerFactory() {
         Map<String, Object> configProps = commonConsumerConfig();
-        configProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+        configProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        configProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        configProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+        // Thay vì dùng JsonDeserializer, ta dùng StringDeserializer cho cả Key và Value
+        configProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        configProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
 
@@ -183,6 +198,20 @@ public class KafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, JobPostingEvent> jobPostingEventKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, JobPostingEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(jobPostingEventConsumerFactory());
+
+        factory.setRecordMessageConverter(multiTypeConverter());
+
         return factory;
+    }
+
+    @Bean
+    public RecordMessageConverter multiTypeConverter() {
+        JsonMessageConverter converter = new JsonMessageConverter();
+        DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+
+        typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.INFERRED);
+
+        converter.setTypeMapper(typeMapper);
+        return converter;
     }
 }

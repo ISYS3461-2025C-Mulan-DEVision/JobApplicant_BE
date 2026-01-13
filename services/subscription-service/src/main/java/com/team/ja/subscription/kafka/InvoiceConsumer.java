@@ -21,7 +21,7 @@ public class InvoiceConsumer {
 
     private final InvoiceRepository invoiceRepository;
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "subscription-invoice-consumer")
     public void handlePaymentCompletedEvent(PaymentCompletedEvent event) {
         log.info("Received payment completed event for invoice processing: {}", event);
 
@@ -44,7 +44,7 @@ public class InvoiceConsumer {
         invoiceRepository.save(invoice);
     }
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_FAILED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_FAILED, groupId = "subscription-invoice-consumer")
     public void handlePaymentFailedEvent(PaymentCompletedEvent event) {
         log.info("Received payment failed event for invoice processing: {}", event);
 
@@ -72,7 +72,7 @@ public class InvoiceConsumer {
         invoiceRepository.save(invoice);
     }
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_CANCELLED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_CANCELLED, groupId = "subscription-invoice-consumer")
     public void handlePaymentCancelledEvent(PaymentCompletedEvent event) {
         log.info("Received payment cancelled event for invoice processing: {}", event);
 
