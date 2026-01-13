@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import com.team.ja.common.event.JobPostingEvent;
 import com.team.ja.common.event.KafkaTopics;
 import com.team.ja.user.repository.UserSearchProfileEmploymentRepository;
 import com.team.ja.user.repository.UserSearchProfileJobTitleRepository;
@@ -34,9 +35,9 @@ public class JobPostMatchConsumer {
             "user_shard_north_america",
             "user_shard_others");
 
-    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "${spring.kafka.consumer.group-id}")
-    public void handleJobPostPublishedEvent(String event) {
-        log.info("Received JobPostPublishedEvent for processing: {}", event);
+    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "${spring.kafka.consumer.group-id}", containerFactory = "jobPostingEventKafkaListenerContainerFactory")
+    public void handleJobPostPublishedEvent(JobPostingEvent event) {
+        log.info("Received JobPostPublishedEvent for processing: jobId={}, title={}", event.getJobPostId(), event.getTitle());
         
 
     }
