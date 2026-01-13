@@ -32,7 +32,7 @@ public class SubscriptionConsumer {
     private final SubscriptionRepository subscriptionRepository;
     private final KafkaTemplate<String, SubscriptionActivateEvent> kafkaTemplate;
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_COMPLETED, groupId = "subscription-activation-consumer")
     public void handlePaymentResponse(PaymentCompletedEvent event) {
 
         if ("COMPANY".equals(event.getPayerType())) {
@@ -115,7 +115,7 @@ public class SubscriptionConsumer {
 
     }
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_FAILED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_FAILED, groupId = "subscription-activation-consumer")
     public void handlePaymentFailed(PaymentCompletedEvent event) {
 
         log.info("Received payment failed response for subscription processing: {}", event);
@@ -145,7 +145,7 @@ public class SubscriptionConsumer {
         }
     }
 
-    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_CANCELLED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.APPLICANT_PAYMENT_CANCELLED, groupId = "subscription-activation-consumer")
     public void handlePaymentCancelled(PaymentCompletedEvent event) {
 
         log.info("Received payment cancelled response for subscription processing: {}", event);

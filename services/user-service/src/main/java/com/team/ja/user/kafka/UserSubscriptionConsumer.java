@@ -22,7 +22,7 @@ public class UserSubscriptionConsumer {
     private final ShardLookupService shardLookupService;
     private final UserRepository userRepository;
 
-    @KafkaListener(topics = KafkaTopics.SUBSCRIPTION_ACTIVATE, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.SUBSCRIPTION_ACTIVATE, groupId = "user-subscription-consumer")
     public void handleSubscriptionActivateEvent(SubscriptionActivateEvent event) {
         log.info("Received subscription activate event for user subscription processing: {}", event);
 
@@ -47,7 +47,7 @@ public class UserSubscriptionConsumer {
         }
     }
 
-    @KafkaListener(topics = KafkaTopics.SUBSCRIPTION_DEACTIVATE, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.SUBSCRIPTION_DEACTIVATE, groupId = "user-subscription-consumer")
     public void handleSubscriptionDeactivateEvent(SubscriptionDeactivateEvent event) {
         log.info("Received subscription deactivate event for user subscription processing: {}", event);
 

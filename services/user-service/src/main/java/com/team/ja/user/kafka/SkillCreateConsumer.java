@@ -32,7 +32,7 @@ public class SkillCreateConsumer {
     // user_shard_others is excluded because it's the source
     );
 
-    @KafkaListener(topics = KafkaTopics.SKILL_CREATED, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.SKILL_CREATED, groupId = "user-skill-consumer")
     public void handleSkillCreate(SkillCreateEvent event) {
         log.info("Received SkillCreateEvent for sync: {}", event.getName());
 

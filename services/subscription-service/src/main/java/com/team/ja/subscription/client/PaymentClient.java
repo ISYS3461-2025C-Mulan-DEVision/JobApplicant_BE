@@ -7,10 +7,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import com.team.ja.common.dto.ApiResponse;
+import com.team.ja.subscription.config.FeignConfig;
 import com.team.ja.subscription.dto.request.CreatePaymentRequest;
 import com.team.ja.subscription.dto.response.PaymentResponse;
 
-@FeignClient(name = "payment-service", url = "${feign.client.payment-service.url}")
+/**
+ * Feign client for Payment Service integration
+ * Automatically attaches JWE authorization token to all requests
+ * via FeignConfig.paymentServiceInterceptor()
+ */
+@FeignClient(name = "payment-service", url = "${feign.client.payment-service.url}", configuration = FeignConfig.class)
 public interface PaymentClient {
 
     @GetMapping("/{paymentId}")
