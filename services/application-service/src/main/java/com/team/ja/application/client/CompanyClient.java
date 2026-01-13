@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.UUID;
 
-@FeignClient(name = "${services.jm-company.name:JM_COMPANY}")
+@FeignClient(name = "company-service", url = "${app.jm.api.company-url}")
 public interface CompanyClient {
 
     // Returns wrapped in ApiResponse
