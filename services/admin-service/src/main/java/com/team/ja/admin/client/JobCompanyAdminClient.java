@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Feign client for Job Manager - Company Service (Admin Operations)
- * Service Name: JOB-MANAGER-COMPANY (registered in Eureka)
+ * Uses direct URL configuration with Bearer token authentication.
  * 
  * This client provides admin-level access to company management operations.
  */
