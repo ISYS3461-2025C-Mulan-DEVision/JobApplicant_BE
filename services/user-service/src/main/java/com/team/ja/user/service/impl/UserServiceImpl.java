@@ -99,7 +99,6 @@ public class UserServiceImpl implements UserService {
     private final ShardingProperties shardingProperties;
     private final ShardLookupService shardLookupService;
     private final AuthServiceClient authServiceClient;
-    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     private final KafkaTemplate<String, UserMigrationEvent> userMigrationEventKafkaTemplate;
     private final KafkaTemplate<String, UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate;
@@ -845,6 +844,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void deactivateUser(UUID userId) {
         log.info("Deactivating user with ID: {}", userId);
 
@@ -852,13 +852,11 @@ public class UserServiceImpl implements UserService {
         ShardContext.setShardKey(shardKey);
 
         try {
-            transactionTemplate.executeWithoutResult(status -> {
-                User user = userRepository
-                        .findById(userId)
-                        .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-                user.deactivate();
-                userRepository.save(user);
-            });
+            User user = userRepository
+                    .findById(userId)
+                    .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
+            user.deactivate();
+            userRepository.save(user);
             log.info("Deactivated user with ID: {}", userId);
         } finally {
             ShardContext.clear();
