@@ -10,11 +10,11 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Feign client for Job Manager - Job Post Service (Admin Operations)
- * Service Name: JOB-MANAGER-JOBPOST (registered in Eureka)
+ * Uses direct URL configuration with Bearer token authentication.
  * 
  * This client provides admin-level access to job post management operations.
  */
-@FeignClient(name = "${services.jm.jobpost.name:JM_JOB_POST}")
+@FeignClient(name = "job-post-service", url = "${app.jm.api.job-post-url}")
 public interface JobPostAdminClient {
 
     /**
