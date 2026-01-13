@@ -21,7 +21,7 @@ public class UserMigrateConsumer {
      *
      * @param event The user migration event containing migration details.
      */
-    @KafkaListener(topics = KafkaTopics.USER_MIGRATION, groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = KafkaTopics.USER_MIGRATION, groupId = "user-migration-consumer")
     public void handleUserMigration(com.team.ja.common.event.UserMigrationEvent event) {
         log.info("Received user migration event for userId: {}", event.getUserId());
         try {

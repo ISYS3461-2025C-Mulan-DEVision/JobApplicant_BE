@@ -46,7 +46,7 @@ public class JobPostingConsumer {
      * Matches job against all active search profiles
      * Publishes notifications for matched profiles
      */
-    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "${spring.kafka.consumer.group-id:user-service}")
+    @KafkaListener(topics = KafkaTopics.JOB_POST_PUBLISHED, groupId = "user-jobposting-consumer", containerFactory = "jobPostingEventKafkaListenerContainerFactory")
     public void handleJobPosted(JobPostingEvent jobEvent) {
         log.info("Received job posting event: jobId={}, title={}", jobEvent.getJobPostId(), jobEvent.getTitle());
 
@@ -99,25 +99,31 @@ public class JobPostingConsumer {
         }
     }
 
-    /**
-     * Handle skill changes in job posting
-     * Re-evaluate matching for affected search profiles
-     */
-    @KafkaListener(topics = KafkaTopics.JOB_POST_SKILL_CHANGE, groupId = "${spring.kafka.consumer.group-id:user-service}")
-    public void handleJobSkillChanged(JobPostingEvent jobEvent) {
-        log.info("Received job skill change event: jobId={}", jobEvent.getJobPostId());
-        // Treat as a re-posting, evaluate against all profiles again
-        handleJobPosted(jobEvent);
-    }
+    // /**
+    // * Handle skill changes in job posting
+    // * Re-evaluate matching for affected search profiles
+    // */
+    // @KafkaListener(topics = KafkaTopics.JOB_POST_SKILL_CHANGE, groupId =
+    // "user-jobposting-consumer", containerFactory =
+    // "jobPostingEventKafkaListenerContainerFactory")
+    // public void handleJobSkillChanged(JobPostingEvent jobEvent) {
+    // log.info("Received job skill change event: jobId={}",
+    // jobEvent.getJobPostId());
+    // // Treat as a re-posting, evaluate against all profiles again
+    // handleJobPosted(jobEvent);
+    // }
 
-    /**
-     * Handle country changes in job posting
-     * Re-evaluate matching for affected search profiles
-     */
-    @KafkaListener(topics = KafkaTopics.JOB_POST_COUNTRY_CHANGE, groupId = "${spring.kafka.consumer.group-id:user-service}")
-    public void handleJobCountryChanged(JobPostingEvent jobEvent) {
-        log.info("Received job country change event: jobId={}", jobEvent.getJobPostId());
-        // Treat as a re-posting, evaluate against all profiles again
-        handleJobPosted(jobEvent);
-    }
+    // /**
+    // * Handle country changes in job posting
+    // * Re-evaluate matching for affected search profiles
+    // */
+    // @KafkaListener(topics = KafkaTopics.JOB_POST_COUNTRY_CHANGE, groupId =
+    // "user-jobposting-consumer", containerFactory =
+    // "jobPostingEventKafkaListenerContainerFactory")
+    // public void handleJobCountryChanged(JobPostingEvent jobEvent) {
+    // log.info("Received job country change event: jobId={}",
+    // jobEvent.getJobPostId());
+    // // Treat as a re-posting, evaluate against all profiles again
+    // handleJobPosted(jobEvent);
+    // }
 }
