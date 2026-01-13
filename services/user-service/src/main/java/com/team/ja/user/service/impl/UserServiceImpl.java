@@ -99,7 +99,6 @@ public class UserServiceImpl implements UserService {
     private final ShardingProperties shardingProperties;
     private final ShardLookupService shardLookupService;
     private final AuthServiceClient authServiceClient;
-    private final org.springframework.transaction.support.TransactionTemplate transactionTemplate;
 
     private final KafkaTemplate<String, UserMigrationEvent> userMigrationEventKafkaTemplate;
     private final KafkaTemplate<String, UserSearchProfileUpdateEvent> userSearchProfileUpdateKafkaTemplate;
@@ -858,25 +857,12 @@ public class UserServiceImpl implements UserService {
         log.info("Shard context set to: {}", shardKey);
 
         try {
-            log.info("Fetching user from repository with ID: {}", userId);
             User user = userRepository
                     .findById(userId)
                     .orElseThrow(() -> new NotFoundException("User", "id", userId.toString()));
-
-            log.info("User found - ID: {}, Email: {}, isActive BEFORE: {}",
-                    user.getId(), user.getEmail(), user.isActive());
-
             user.deactivate();
-            log.info("Called user.deactivate() - isActive AFTER deactivate(): {}", user.isActive());
-
-            User savedUser = userRepository.save(user);
-            log.info("User saved to repository - isActive AFTER save: {}, deactivatedAt: {}",
-                    savedUser.isActive(), savedUser.getDeactivatedAt());
-
-            log.info("=== COMPLETED deactivateUser successfully for UserID: {}", userId);
-        } catch (Exception e) {
-            log.error("=== ERROR in deactivateUser for UserID: {}", userId, e);
-            throw e;
+            userRepository.save(user);
+            log.info("Deactivated user with ID: {}", userId);
         } finally {
             log.info("Clearing shard context");
             ShardContext.clear();
